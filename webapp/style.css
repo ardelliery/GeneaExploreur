@@ -1,0 +1,42 @@
+/* Empêche le rebond du navigateur sur mobile */
+html, body {
+    position: fixed;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+#app-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-view {
+    flex: 1;
+    display: none;
+    position: relative;
+}
+
+.app-view.active { display: block; }
+
+/* La Barre de Navigation */
+.tab-bar {
+    height: 70px;
+    background: #2d3748;
+    display: flex;
+    justify-content: space-around;
+    padding-bottom: env(safe-area-inset-bottom); /* Gère l'encoche des iPhones */
+}
+
+.tab-item {
+    color: #a0aec0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+}
+
+.tab-item.active { color: white; font-weight: bold; }

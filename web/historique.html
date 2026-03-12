@@ -1,0 +1,172 @@
+
+
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Généalogie - Histoire & Chronologie</title>
+    <script src="d3.v7.min.js"></script>
+	<link rel="stylesheet" href="historique.css">
+ 
+</head>
+<body>
+    <div id="hover-zoom-panel"></div>
+    <div id="left-zone">
+        <div id="filter-bar">
+            <div class="filter-group">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                    <span id="lbl-years">Calcul...</span>
+                    <span id="lbl-count" style="font-weight: normal; color: var(--text-muted);"></span>
+                </div>
+                <div id="stats-container"></div>
+                <div class="timeline-wrapper">
+                    <div class="range-track"></div>
+                    <input type="range" id="min-year">
+                    <input type="range" id="max-year">
+                </div>
+            </div>
+            <div class="filter-group"><label>👤 Noms de naissance</label><select id="filter-names" multiple size="8"></select></div>
+            <div class="filter-group"><label>📍 Lieux de naissance</label><select id="filter-places" multiple size="8"></select></div>
+            <div class="filter-group">
+                <label>🧬 Lignées et descendances</label>
+                <div style="position: relative;">
+                    <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                        <input type="text" id="lineage-search" placeholder="Filtrer la liste..." style="padding: 4px; border-radius: 4px; border: 1px solid #cbd5e0; font-size: 12px; width: 100%;">
+                        <button onclick="clearLineageFilter()" style="padding: 2px 5px; cursor: pointer;">✕</button>
+                    </div>
+                <select id="filter-lineage-select" size="5" style="width: 100%; max-width: none;">
+                    <option value="">-- Toutes les familles --</option>
+                </select>
+				</div>
+			</div>
+            <div class="filter-group">
+                <label>🔗 Liens</label>
+                <label style="font-weight:normal"><input type="checkbox" id="check-parent" checked> Parents</label>
+                <label style="font-weight:normal"><input type="checkbox" id="check-marriage" checked> Mariages</label>
+            </div>
+			<div class="filter-group tool-group">
+				<button onclick="resetZoom()" class="nav-btn">🏠 Reset zoom</button>
+				<button onclick="openNewsPopup()" class="nav-btn btn-about">ℹ️ À propos</button>
+			</div>
+        </div>
+
+
+		<div id="map-container">
+			<div class="lineage-controls">
+				<div id="quick-nav-container" style="display: none;">
+					<button class="btn-poster" onclick="generatePoster()">
+						🖨️ Créer le Poster de cette lignée
+					<!-- </button> -->
+					<button class="btn-poster" onclick="showTextReport()" style="background-color: #2d3748;">📄 Rapport Liste</button>
+					<button id="btn-go-to-org" class="btn-poster">
+						🌳 Visualiser dans l'organigramme
+					</button>
+					<button id="btn-relation-search" class="btn-poster" onclick="openRelationModal()" style="background-color: #ed8936; ">
+						🔍 Vérifier la relation
+					</button>
+				</div>
+			</div>
+
+			<svg id="map-svg"></svg>
+		</div>
+    </div>
+
+
+<div id="modal-relation" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🔍 Calcul de parenté / cousinade</h3>
+            <span class="close-btn" onclick="closeRelationModal()">&times;</span>
+        </div>
+
+        <div class="modal-body">
+            <div class="input-group">
+                <label>Personne A (Lignée)</label>
+                <div id="relation-source-name" class="person-display">Chargement...</div>
+            </div>
+
+            <div class="input-group">
+                <label>Personne B (Rechercher par nom ou prénom)</label>
+                <div class="search-container">
+                    <input type="text" id="relation-search-input" placeholder="Tapez un nom (ex: Martin 1850)...">
+                    <select id="select-person-target" size="5" class="search-results-dropdown"></select>
+                </div>
+            </div>
+
+            <div class="button-row">
+                <button onclick="executeRelationSearch()" class="btn-primary">Calculer le lien</button>
+                <button onclick="closeRelationModal()" class="btn-secondary">Annuler</button>
+            </div>
+
+            <div id="relation-result-zone" class="result-scroll-area">
+                <div id="path-list"></div>
+            </div>
+        </div>
+
+        <div id="relation-final-actions" class="modal-footer">
+            <button onclick="generateRelationReport()" class="btn-success">📄 Générer le rapport détaillé</button>
+        </div>
+    </div>
+</div>
+<div id="side-panel">
+	<div style="padding:15px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+		<div style="display:flex; justify-content:space-between; align-items:center;">
+			<b style="color:var(--primary)">ARBRE CHRONOLOGIQUE & HISTORIQUE</b>
+			<div>
+				<button id="btn-fs" onclick="toggleFullScreen()" style="cursor:pointer; padding:6px 12px; margin-right:5px; background:white; border:1px solid #cbd5e0; border-radius:4px;">Agrandir</button>
+				<button onclick="togglePanel(false)" style="cursor:pointer; padding:6px 12px; background:#edf2f7; border:1px solid #cbd5e0; border-radius:4px;">Fermer</button>
+			</div>
+		</div>
+		
+		<div class="search-container">
+			<input type="text" id="search-input-panel" placeholder="🔍 Rechercher un ancêtre ou cousin (ex: Martin)...">
+			<div id="search-results-panel"></div>
+		</div>
+	</div>
+	<div id="tree-viz"></div>
+</div>
+<div id="news-popup-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; width:90%; max-width:500px; border-radius:12px; overflow:hidden; box-shadow:0 20px 25px -5px rgba(0,0,0,0.2); animation: fadeIn 0.3s ease-out;">
+        <div style="background:#2b6cb0; color:white; padding:15px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
+            <span>✨ Nouveautés & Fonctions</span>
+            <span  id="app-version-display" style="font-size:0.8em; opacity:0.8;">v7.0</span>
+        </div>
+        <div style="padding:20px; max-height:70vh; overflow-y:auto; font-family: sans-serif; line-height:1.5; color:#4a5568;">
+            <h3 style="margin-top:0; color:#2d3748; font-size:1.1em;">Fonctionnalités</h3>
+            <ul style="padding-left:20px; font-size:0.9em;">
+                <li><b>Cartographie :</b> visualisation cartographique des lieux de naissance.</li>
+                <li><b>Sablier :</b> En cliquant sur une pastille de la carte ou en sélectionnant une personne dans le selecteur de lignée.</li>
+                <li><b>Timeline :</b> Ouvrir la zone au pied de la page.</li>
+            </ul>
+            
+            <h3 style="color:#2d3748; font-size:1.1em;">Informations</h3>
+            <ul style="padding-left:20px; font-size:0.9em;">
+                <li>Pour accéder aux foncionnalités de reporting et de recherche de liens il faut au préalable sélectionner un individu dans le sélecteur de lignée/descendance.</li>
+            </ul>
+        </div>
+        <div style="padding:15px; border-top:1px solid #edf2f7; text-align:right; background:#f7fafc;">
+            <button onclick="closeNewsPopup()" style="background:#2b6cb0; color:white; border:none; padding:8px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">J'ai compris</button>
+        </div>
+    </div>
+</div>
+
+<div style="position: fixed; bottom: 60px; right: 15px; z-index: 100; opacity: 0.3; pointer-events: none;">
+    <img src="logo.png" alt="Logo" style="height: 200px; width: auto;">
+</div>
+
+<div id="popup" class="popup"></div>
+<div id="timeline-drawer" class="timeline-drawer">
+    <div class="timeline-handle" onclick="toggleTimeline()">
+        <span>🕒 Frise Chronologique</span>
+        <span id="timeline-arrow">▲</span>
+    </div>
+    <div id="timeline-content">
+        <svg id="timeline-svg"></svg>
+    </div>
+</div>
+
+<script src="historique.js"></script>
+
+</body>
+</html>

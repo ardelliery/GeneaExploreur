@@ -1,0 +1,692 @@
+        :root { --primary: #2b6cb0; --secondary: #c53030; --text-dark: #1a202c; --text-muted: #718096; --accent: #ed8936; }
+        body { margin: 0; display: flex; height: 100vh; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; background: #f7fafc; }
+
+        /* Interface Principale */
+        #left-zone { width: 100vw; height: 100vh; display: flex; flex-direction: column; position: relative; }
+
+
+#filter-bar { 
+    background: #f1f5f9; 
+    padding: 10px 15px; 
+    border-bottom: 2px solid #e2e8f0; 
+    display: flex; 
+    flex-direction: row;
+    flex-wrap: nowrap; /* EMPÊCHE LE RETOUR À LA LIGNE */
+    align-items: stretch; 
+    gap: 10px; 
+    z-index: 10; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    overflow: hidden; /* Évite les débordements bizarres */
+}
+
+/* On cible spécifiquement le premier groupe qui contient l'histogramme */
+.filter-group:first-child {
+    flex: 1; /* Il prend tout l'espace restant et peut se réduire */
+    min-width: 150px; /* Largeur minimum pour que ça reste lisible */
+    max-width: 250px; /* Évite qu'il ne devienne trop géant sur très grand écran */
+}
+
+/* Les autres groupes (Noms, Lieux, etc.) restent à leur taille fixe */
+.filter-group { 
+    display: flex; 
+    flex-direction: column; 
+    font-size: 11px; 
+    font-weight: 700; 
+    color: var(--text-dark); 
+    min-width: 180px; /* Taille de base pour les listes */
+    background: white;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+
+        .filter-group:hover {
+            border-color: var(--primary); /* Rappel de la bordure popup au survol */
+        }
+
+        .filter-group label {
+            margin-bottom: 8px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Style des listes déroulantes */
+        select { 
+            padding: 6px; 
+            border: 1px solid #cbd5e0; 
+            border-radius: 6px; 
+            font-size: 12px; 
+            font-family: inherit;
+            color: var(--text-dark);
+            background-color: #f8fafc;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        select:focus {
+            border-color: var(--primary);
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.1);
+        }
+
+        /* Style spécifique pour les listes multiples (Noms/Lieux) */
+        select[multiple] {
+            height: 120px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) #edf2f7;
+        }
+
+        /* Champs de texte dans les filtres */
+        #lineage-search {
+            padding: 6px !important;
+            border-radius: 6px !important;
+            border: 1px solid #cbd5e0 !important;
+            background: #fff !important;
+        }
+
+#filter-bar button { 
+    /* Ce style s'appliquera à TOUS les boutons dans la barre de filtre */
+    align-self: center;
+    background: var(--primary); /* TON BLEU */
+    color: white !important;    /* TON BLANC */
+    border: none; 
+    border-radius: 8px; 
+    padding: 10px 15px; 
+    font-weight: bold; 
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.2s;
+    height: fit-content;
+    white-space: nowrap;
+}
+
+#filter-bar button:hover {
+    background: #2c5282;
+    transform: translateY(-1px);
+}
+
+        /* Bouton de nettoyage rapide (petit X) */
+        .filter-group button {
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+        /* Histogramme compact */
+
+/* RENDRE LES STATS ET SLIDER FLUIDES */
+#stats-container { 
+    display: flex; 
+    align-items: flex-end; 
+    gap: 1px; 
+    height: 40px; 
+    margin-bottom: 1px; margin-top: 30px; 
+    width: 100%; /* S'adapte au parent flexible */
+}
+        /* #stats-container { display: flex; align-items: flex-end; gap: 1px; height: 50px; margin-bottom: 15px; width: 220px; } */
+        /* .stat-bar { background: var(--primary); opacity: 0.15; flex: 1; height: 0px; } */
+        .stat-bar { background: #add8e6; opacity: 0.3; flex: 1; height: 0px; }
+        .stat-bar.active { opacity: 1; background: var(--primary); box-shadow: 0 -1px 3px rgba(0,0,0,0.05); }
+
+/* MEDIA QUERIES POUR PETITS ÉCRANS */
+@media (max-width: 800px) {
+    #filter-bar {
+        padding: 10px;
+        gap: 8px;
+    }
+    .filter-group {
+        min-width: 140px;
+        padding: 6px;
+    }
+    /* On peut réduire la taille des listes pour gagner de la place */
+    select[multiple] {
+        height: 120px;
+    }
+}
+
+
+
+        /* DOUBLE SLIDER */
+.timeline-wrapper { 
+    width: 100%; /* S'adapte au parent flexible */
+    position: relative; 
+    height: 25px; 
+}
+        .range-track { position: absolute; width: 100%; height: 6px; border-radius: 3px; top: 15px; background: linear-gradient(to right, #440154, #3b528b, #21908d, #5dc963, #fde725); z-index: 1; }
+        input[type="range"] { position: absolute; width: 100%; appearance: none; background: none; margin: 0; top: 24px; pointer-events: none; }
+        input[type="range"]::-webkit-slider-thumb { pointer-events: auto; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: white; border: 2px solid var(--primary); cursor: pointer; }
+        input[type="range"]::-moz-range-thumb { pointer-events: auto; width: 18px; height: 18px; border-radius: 50%; background: white; border: 2px solid var(--primary); cursor: pointer; }
+
+        /* CARTE ET LIENS */
+        #map-container { flex-grow: 1; position: relative; overflow: hidden; }
+        svg#map-svg { width: 100%; height: 100%; background: #edf2f7; cursor: grab; }
+        .subdivision { fill: white; stroke: #cbd5e0; stroke-width: 0.5px; }
+        .link { fill: none; stroke-opacity: 0.6; pointer-events: none; }
+        .link-parent {
+			stroke: var(--primary);
+			stroke-opacity: 0.7; /* Légère transparence pour voir les flèches qui se croisent */
+		}
+        .link-marriage { stroke: var(--secondary); stroke-dasharray: 3,2; }
+        .node-circle { cursor: pointer; stroke: #fff; }
+        .node-text { fill: white; font-weight: 800; pointer-events: none; text-anchor: middle; dominant-baseline: central; font-family: Arial, sans-serif; }
+
+        #filter-lineage-select, #filter-names, #filter-places { width: 100%; }
+
+        /* POPUP ET PANNEAU */
+		/* Style harmonisé pour les Popups de la carte */
+
+.popup {
+    position: fixed !important; /* Force la position par rapport à la fenêtre */
+    background: white !important;
+    display: none; 
+    visibility: visible !important;
+    z-index: 20000 !important; /* Score de priorité maximal */
+    pointer-events: all !important; /* Autorise les clics sur les boutons internes */
+    min-height: 50px;
+    min-width: 200px;
+    border: 2px solid #2b6cb0;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+		.popup-item {
+			margin: 0;
+			padding: 15px;
+			border-bottom: 1px solid #edf2f7;
+			background: white;
+		}
+
+		.popup-item:last-child {
+			border-bottom: none;
+		}
+
+		/* On réutilise le style des "zoom-cards" pour l'intérieur du popup */
+		.popup-card-content {
+			border-left: 4px solid var(--primary);
+			padding-left: 12px;
+			margin-bottom: 10px;
+		}
+
+		.popup-item b {
+			display: block;
+			font-size: 12px;
+			color: var(--text-dark);
+			text-transform: uppercase;
+		}
+
+		.popup-item span {
+			display: block;
+			font-size: 10px;
+			color: var(--text-muted);
+			margin-top: 4px;
+		}
+
+		.popup-btn {
+			width: 100%;
+			margin-top: 5px;
+			cursor: pointer;
+			background: var(--primary);
+			color: white;
+			border: none;
+			border-radius: 6px;
+			padding: 4px;
+			font-weight: bold;
+			transition: opacity 0.2s;
+		}
+
+		.popup-btn:hover {
+			opacity: 0.9;
+		}
+       
+        #side-panel { 
+            position: fixed; top: 0; right: -100%; width: 520px; height: 100vh; 
+            background: white; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 9999; display: flex; flex-direction: column; 
+            box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+        }
+        #side-panel.open { right: 0; }
+        #side-panel.full-screen { width: 100vw !important; right: 0; }
+        #tree-viz { flex-grow: 1; background: #fff; cursor: move; }
+
+        /* RECHERCHE DANS LE PANNEAU */
+        .search-container { position: relative; margin-top: 10px; width: 100%; }
+        #search-input-panel { 
+            width: 100%; padding: 8px 30px 8px 10px; border: 1px solid #cbd5e0; 
+            border-radius: 6px; box-sizing: border-box; font-size: 14px;
+        }
+        #search-results-panel {
+            position: absolute; top: 100%; left: 0; right: 0; background: white;
+            border: 1px solid #cbd5e0; border-top: none; max-height: 300px;
+            overflow-y: auto; z-index: 10001; display: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .search-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .search-item:hover { background: #f8fafc; color: var(--primary); }
+        .search-item b { text-transform: uppercase; }
+
+        /* Organigramme */
+        .hg-link { fill: none; stroke: #cbd5e0; stroke-width: 1.5px; }
+        .hg-card-rect { transition: fill 0.2s, stroke 0.2s; }
+        .hg-name { fill: var(--primary); font-size: 11px; font-weight: bold; pointer-events: none; }
+        .hg-details { fill: var(--text-muted); font-size: 9px; pointer-events: none; }
+        .hg-card-approx { stroke-dasharray: 4,4; opacity: 0.8; }
+        .hg-details-approx { fill: var(--accent) !important; font-style: italic; }
+        #lbl-count { font-size: 11px; color: var(--text-muted); margin-left: 5px; }
+        .hist-label { font-size: 14px; font-weight: 900; fill: #cbd5e0; text-transform: uppercase; letter-spacing: 2px; }
+        .year-label { font-size: 10px; fill: var(--text-muted); font-weight: bold; }
+        .year-line { stroke: #e2e8f0; stroke-dasharray: 4,4; stroke-width: 1px; }
+		
+		/* Panneau de Zoom Contextuel avec Ascenseur */
+		#hover-zoom-panel {
+			position: fixed;
+			pointer-events: none;
+			background: white;
+			border: 2px solid var(--primary);
+			border-radius: 12px;
+			box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+			z-index: 10005;
+			padding: 15px;
+			display: none;
+			min-width: 280px;
+			max-width: 350px;
+			
+			/* Gestion du débordement */
+			max-height: 80vh; 
+			overflow-y: auto;
+			scrollbar-width: thin; /* Pour Firefox */
+		}
+
+		/* Style de l'ascenseur pour Chrome/Edge/Safari */
+		#hover-zoom-panel::-webkit-scrollbar {
+			width: 6px;
+		}
+		#hover-zoom-panel::-webkit-scrollbar-thumb {
+			background-color: #cbd5e0;
+			border-radius: 10px;
+		}
+
+		.zoom-section-title { font-size: 10px; color: var(--text-muted); font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #eee; margin-top: 10px; }
+		.zoom-card { padding: 5px; border-left: 3px solid var(--primary); margin-bottom: 8px; background: #f8fafc; }
+		.zoom-card b { font-size: 13px; color: var(--text-dark); display: block; }
+		.zoom-card span { font-size: 11px; color: var(--text-muted); }    
+		
+		/* Style commun pour les boutons d'action de la lignée */
+#quick-nav-container {
+    display: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+    width: auto; /* Laisse le conteneur s'adapter à la largeur des boutons */
+    position: absolute;
+    right: 15px; /* Aligne le bloc à droite du panneau de contrôle */
+}
+
+.btn-poster {
+    display: inline-block;
+    padding: 8px 14px;
+    background-color: #2b6cb0;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.btn-poster:hover {
+    background-color: #2c5282;
+    transform: translateX(-2px); /* Petit effet de glissement vers la gauche au survol */
+}
+
+#btn-go-to-org {
+    background-color: #4a5568;
+}
+		
+	.timeline-drawer {
+    position: fixed;
+    bottom: -260px; /* Caché par défaut */
+    left: 0;
+    width: 100%;
+    height: 300px;
+    background: white;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+    transition: bottom 0.4s ease;
+    z-index: 1000;
+}
+.timeline-drawer.open { bottom: 0; }
+.timeline-handle {
+    height: 40px;
+    background: #2b6cb0;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    cursor: pointer;
+}
+#timeline-content { 
+    padding: 10px; 
+    height: 250px; 
+    overflow-y: auto; /* Permet de scroller si la liste est longue */
+    background-color: #f8fafc; /* Un fond gris très léger pour voir la zone */
+}
+#timeline-svg {
+    display: block;
+    min-height: 100px; /* Force une hauteur minimale */
+}		
+
+/* L'arrière-plan (Overlay) reste invisible par défaut */
+.modal-overlay {
+    display: none; 
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(26, 32, 44, 0.8);
+    z-index: 20000;
+}
+
+/* La Boîte Blanche positionnée à 30% de la droite */
+.modal-overlay .modal-content {
+    position: absolute !important;
+    top: 50px !important;   /* Fixé à 50px du haut */
+    right: 30% !important; /* TA DEMANDE : 30% du bord droit */
+    
+    /* On retire les marges auto et les translations de centrage */
+    margin: 0 !important;
+    transform: none !important; 
+    left: auto !important;
+
+    width: 450px;
+    background: white;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 100px);
+    overflow: hidden;
+    box-shadow: 0 20px 25px rgba(0,0,0,0.3);
+}
+
+/* Header */
+.modal-header {
+    background: #2b6cb0;
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.modal-header h3 { margin: 0; font-size: 16px; }
+.close-btn { cursor: pointer; font-size: 24px; line-height: 1; }
+
+/* Body */
+.modal-body { padding: 20px; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.input-group { margin-bottom: 15px; }
+.input-group label { font-size: 11px; font-weight: bold; color: #718096; text-transform: uppercase; }
+
+/* Affichage Personne A */
+.person-display {
+    padding: 12px;
+    background: #ebf8ff;
+    border: 2px solid #bee3f8;
+    border-radius: 8px;
+    font-weight: 800;
+    margin-top: 5px;
+    color: #2b6cb0;
+    font-size: 15px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Recherche Personne B */
+.search-container { position: relative; margin-top: 5px; }
+#relation-search-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+.search-results-dropdown {
+    width: 100%;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    display: none;
+    background: white;
+    position: absolute;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    margin-top: 2px;
+}
+
+/* Boutons */
+.button-row { display: flex; gap: 10px; }
+.btn-primary { flex: 2; padding: 10px; background: #2b6cb0; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+.btn-secondary { flex: 1; padding: 10px; background: #edf2f7; color: #4a5568; border: none; border-radius: 6px; cursor: pointer; }
+.btn-success { width: 100%; padding: 12px; background: #48bb78; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
+/* ZONE DE RÉSULTAT AVEC ASCENSEUR */
+.result-scroll-area {
+    display: none;
+    margin-top: 20px;
+    padding: 15px;
+    background: #fffaf0;
+    border: 1px solid #feebc8;
+    border-radius: 8px;
+    overflow-y: auto; /* Active l'ascenseur */
+    flex: 1;          /* Prend la place restante */
+    min-height: 100px;
+}
+
+.modal-footer {
+    padding: 15px;
+    background: #f8fafc;
+    border-top: 1px solid #edf2f7;
+}		
+
+.search-results-dropdown {
+    width: 100%;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    display: none; /* Caché par défaut */
+    background: white;
+    position: absolute;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    margin-top: 2px;
+    
+    /* Pour que ce soit une "liste basique" agréable */
+    padding: 5px;
+    outline: none;
+	display: none;
+    position: absolute;
+    width: 100%;
+    max-height: 200px; /* On limite la hauteur de la liste déroulante */
+    overflow-y: auto;  /* Ascenseur interne à la liste */
+    z-index: 1000;     /* Toujours au-dessus du reste */
+    background: white;
+    border: 1px solid #cbd5e0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
+
+.search-results-dropdown option {
+    padding: 8px;
+    cursor: pointer;
+    border-bottom: 1px solid #f7fafc;
+}
+
+.search-results-dropdown option:hover {
+    background-color: #ebf8ff;
+}
+
+@keyframes fadeIn { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
+
+.btn-info {
+    background-color: #4a5568; /* Gris bleuté pro */
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.2s;
+    width: 100%; /* Pour qu'il ait la même largeur que le bouton Reset */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-info:hover {
+    background-color: #2d3748;
+}
+
+/* Le conteneur pour aligner verticalement les deux boutons */
+.tool-group {
+    min-width: 140px !important; /* Largeur fixe pour ce groupe */
+    justify-content: center;
+    gap: 8px !important;
+    background: transparent !important; /* Optionnel : pour ne pas avoir le cadre blanc autour */
+    border: none !important;
+}
+
+/* Style commun pour les deux boutons */
+.nav-btn {
+    width: 100%;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-weight: bold;
+    font-size: 11px; /* Aligné sur la taille de tes labels */
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.nav-btn:hover {
+    background: #2c5282;
+    transform: translateY(-1px);
+}
+
+/* Style spécifique pour le bouton À propos (couleur plus neutre) */
+.btn-about {
+    background: #4a5568; /* Gris bleuté pour différencier du Reset */
+}
+
+.btn-about:hover {
+    background: #2d3748;
+}
+
+.user-manual-container {
+        max-height: 500px; /* Hauteur fixe pour activer l'ascenseur */
+        overflow-y: auto;
+        padding: 0 15px 10px 0;
+        color: #4a5568;
+        line-height: 1.6;
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+    /* Personnalisation de l'ascenseur (scroll) */
+    .user-manual-container::-webkit-scrollbar { width: 8px; }
+    .user-manual-container::-webkit-scrollbar-track { background: #f7fafc; }
+    .user-manual-container::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 10px; }
+
+    /* En-tête avec Logo */
+    .manual-header {
+        display: flex;
+        align-items: center; /* Aligne le logo et le titre sur la même ligne */
+        gap: 20px;
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #edf2f7;
+        background: #f8fafc;
+        padding: 10px;
+        border-radius: 8px;
+    }
+
+    .manual-logo {
+        /* TAILLE LIMITÉE ICI */
+        height: 150px; 
+        width: auto;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+
+    .header-text h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        color: #2d3748;
+    }
+
+    .header-text p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: #718096;
+    }
+
+    /* Sections et mise en page */
+    .section-help { margin-bottom: 25px; }
+    .section-help h4 { 
+        color: #2b6cb0; 
+        display: flex; 
+        align-items: center; 
+        gap: 10px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 5px;
+    }
+    
+    .legend-box { display: flex; align-items: center; gap: 12px; margin: 8px 0; font-size: 0.95em; }
+    .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; border: 1.5px solid #2d3748; }
+    
+    .alert-box { 
+        background: #fffaf0; 
+        border-left: 5px solid #ed8936; 
+        padding: 15px; 
+        margin: 15px 0;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    .step-list { padding-left: 20px; }
+    .step-list li { margin-bottom: 8px; }
+#news-popup-overlay > div {
+    max-width: 800px;
+    width: 90%;
+    max-height: 85vh; /* 85% de la hauteur de l'écran maximum */
+    display: flex;
+    flex-direction: column;
+}
+
+/* LA BOITE BLANCHE (C'est elle qu'il faut élargir) */
+#news-popup-overlay > div {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    
+    /* MODIFIE CES VALEURS ICI */
+    width: 80%;           /* Largeur fluide */
+    max-width: 800px;     /* Limite maximale (augmente à 900px si besoin) */
+    min-width: 300px;     /* Sécurité mobile */
+    
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* On s'assure que le bouton "Fermer" reste toujours visible en bas ou en haut */
+#news-popup-overlay button {
+    margin-top: 15px;
+    flex-shrink: 0; /* Empêche le bouton de disparaître */
+}

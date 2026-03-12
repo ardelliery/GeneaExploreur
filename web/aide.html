@@ -1,0 +1,49 @@
+<div class="user-manual-container">
+	<div class="manual-header">
+		<img src="logo.png" alt="Logo" class="manual-logo">
+		<div class="header-text">
+			<h2>Guide d'Utilisation</h2>
+			<p>Version {{VERSION}} — Explorateur Généalogique</p> 
+		</div>
+	</div>
+	
+    <section class="section-help">
+        <h4><i class="icon">🌳</i> Accéder à l'Organigramme (Sablier)</h4>
+        <p>L'organigramme vertical est le cœur de l'analyse. Vous pouvez y accéder de deux manières :</p>
+        <ul class="step-list">
+            <li><b>Depuis la Carte :</b> Cliquez sur une pastille. Dans la fiche qui apparaît, cliquez sur le bouton bleu <span style="color:#2b6cb0; font-weight:bold;">"Voir l'arbre généalogique"</span>.</li>
+            <li><b>Depuis la Recherche :</b> Sélectionnez un ancêtre dans le menu <span style="font-weight:bold;">"🧬 Lignées et descendances"</span> à gauche, puis cliquez sur le bouton <span style="color:#2d3748; font-weight:bold;">"🌳 Visualiser dans l'organigramme"</span>.</li>
+        </ul>
+        
+    </section>
+
+    <section class="section-help">
+        <h4><i class="icon">📍</i> Légende des Pastilles (Carte)</h4>
+        <p>La couleur des points indique l'époque de naissance de vos ancêtres :</p>
+        <div class="legend-box"><span class="dot" style="background:#440154;"></span> <b>Vieux siècles :</b> Dates anciennes (ex: 1700).</div>
+        <div class="legend-box"><span class="dot" style="background:#fde725;"></span> <b>Siècles récents :</b> Dates contemporaines (ex: 1950).</div>
+        <div class="legend-box">
+            <span style="background:#2b6cb0; color:white; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:bold;">12</span> 
+            <b>Chiffre :</b> Indique un regroupement de plusieurs personnes nées au même endroit.
+        </div>
+        
+    </section>
+
+    <section class="section-help">
+        <h4><i class="icon">🔍</i> Fonctions Avancées & Rapports</h4>
+        <div class="alert-box">
+            <b style="color:#c05621;">⚠️ CONDITION OBLIGATOIRE :</b><br>
+            Pour débloquer les boutons de <b>Reporting</b> (Posters, Listes) et la <b>Recherche de liens</b>, vous devez impérativement avoir sélectionné un individu pivot dans le sélecteur <span style="font-weight:bold;">"🧬 Lignées et descendances"</span> situé dans la barre latérale gauche.
+        </div>
+    </section>
+
+    <section class="section-help">
+        <h4><i class="icon">🕒</i> La Frise Chronologique</h4>
+        <p>Déployez le bandeau au bas de la page pour observer les <b>durées de vie</b>. Les barres s'ajustent en fonction de vos filtres. Cela permet de visualiser immédiatement qui sont les ancêtres qui ont vécu ensemble les grands événements historiques.</p>
+        
+    </section>
+
+    <div style="text-align:center; padding:20px 0; opacity:0.5; font-size:0.8em;">
+        Propulsé par D3.js — Données Généalogiques © 2026
+    </div>
+</div>
