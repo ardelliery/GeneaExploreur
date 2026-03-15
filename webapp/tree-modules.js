@@ -1,11 +1,22 @@
 /**
  * TREE-MODULES.JS - Version DEBUG
  */
+const HISTORIC_PERIODS = [
+    { name: "LOUIS XIV", start: 1643, end: 1715, color: "#edf2f7" },
+    { name: "LOUIS XVI", start: 1774, end: 1789, color: "#f7fafc" },
+    { name: "REVOLUTION", start: 1789, end: 1804, color: "#edf2f7" },
+    { name: "1ER EMPIRE", start: 1804, end: 1815, color: "#fefcbf" },
+    { name: "1ERE GUERRE MONDIALE", start: 1914, end: 1918, color: "#fff5f5" },
+    { name: "2EME GUERRE MONDIALE", start: 1939, end: 1945, color: "#f7fafc" },
+];
+const YEAR_SPACING = 6;
+
 window.TreeModule = {
     svg: null,
     container: null,
     g: null,
 	data: null,
+    
 
 	init(data) {
         console.log("[Tree] Initialisation avec données");
@@ -60,6 +71,73 @@ window.TreeModule = {
         return node;
     },
 
+    drawTimelineBackground(container, birthRef, xMin, xMax) {
+    
+        // On dessine de xMin à xMax pour que ça colle à l'arbre
+        const width = xMax - xMin;
+
+        const bg = container.append('g').attr('class', 'timeline-bg');
+        const xOffset = -width / 2;
+
+        // 1. Dessin des périodes historiques
+        HISTORIC_PERIODS.forEach(p => {
+            const yStart = (p.start - birthRef) * YEAR_SPACING;
+            const yEnd = (p.end - birthRef) * YEAR_SPACING;
+            
+            bg.append('rect')
+                .attr('x', xMin)
+                .attr('y', yStart)
+                .attr('width', width)
+                .attr('height', yEnd - yStart)
+                .attr('fill', p.color)
+                .attr('opacity', 0.5);
+
+            bg.append('text')
+                .attr('x', xMin + 10)
+                .attr('y', yStart + 15)
+                .attr('fill', '#a0aec0')
+                .style('font-size', '16px')
+                .style('font-weight', 'bold')
+                .text(p.name);
+        });
+
+        // 2. Lignes tous les 50 ans
+        for (let yr = 1600; yr <= 2050; yr += 50) {
+            const yPos = (yr - birthRef) * YEAR_SPACING;
+            
+            bg.append('line')
+                .attr('x1', xMin)
+                .attr('x2', xMax)
+                .attr('y1', yPos)
+                .attr('y2', yPos)
+                .attr('stroke', '#4a5568') // Gris foncé (Slate 700)
+                .attr('stroke-width', '1.5px')
+                .attr('stroke-dasharray', '8,4') // Tirets plus longs pour être plus "marqués"
+                .style('opacity', '0.4'); // Légère transparence pour ne pas gêner les liens
+
+            // 2. Le Texte avec effet de Halo (pour la lisibilité)
+            // On dessine d'abord le même texte en blanc plus épais dessous
+            bg.append('text')
+                .attr('x', xMin + 15)
+                .attr('y', yPos - 8)
+                .attr('fill', 'white')
+                .attr('stroke', 'white')
+                .attr('stroke-width', '4px')
+                .style('font-size', '14px')
+                .style('font-weight', 'bold')
+                .text(yr);
+
+            // Puis le texte réel par-dessus
+            bg.append('text')
+                .attr('x', xMin + 15)
+                .attr('y', yPos - 8)
+                .attr('fill', '#2d3748') // Presque noir
+                .style('font-size', '14px')
+                .style('font-weight', 'bold')
+                .text(yr);
+        }
+    },
+
 	render(centerPerson) {
         // On récupère les données soit en interne, soit via App
         const fullData = this.data || App.fullData;
@@ -101,17 +179,60 @@ window.TreeModule = {
         const rootDescendants = d3.hierarchy(descendantsData);
 
         // 3. Layout
+
         const treeLayout = d3.tree().nodeSize([190, 180]);
         treeLayout(rootAncestors);
         treeLayout(rootDescendants);
 
+        // Année de référence pour le centre (Y = 0)
+        // On utilise la date de naissance ou une estimation
+        const birthRef = centerPerson.birth || 1900;
+
+        // Calcul du positionnement temporel (Y)
+        const applyTimeline = (root) => {
+            root.descendants().forEach(d => {
+                // UTILISATION DE COMPUTEDBIRTH
+                // On prend la date calculée, et si vraiment rien n'existe, on prend birthRef
+                const year = d.data.computedBirth || d.data.birth || birthRef;
+                
+                // Calcul de la position Y
+                d.y = (year - birthRef) * YEAR_SPACING;
+            });
+        };
+        
+        applyTimeline(rootAncestors);
+        applyTimeline(rootDescendants); 
+
         // Inversion Y ancêtres
-        rootAncestors.descendants().forEach(d => d.y = -d.y);
+        //rootAncestors.descendants().forEach(d => d.y = -d.y);
+
+        // Calcul de l'étendue horizontale (Largeur de l'arbre)
+        let minX = 0;
+        let maxX = 0;
+
+        // On parcourt les deux hiérarchies pour trouver les limites
+        [rootAncestors, rootDescendants].forEach(root => {
+            root.descendants().forEach(d => {
+                if (d.x < minX) minX = d.x;
+                if (d.x > maxX) maxX = d.x;
+            });
+        });
+
+        // On ajoute une marge de sécurité (padding) pour que le fond dépasse un peu des noms
+        const padding = 200;
+        const treeWidth = maxX - minX + (padding * 2);
+        const centerX = (minX + maxX) / 2; // Le centre géométrique de l'arbre
+
+        // const chartWidth = 2000; // Largeur assez grande pour couvrir tout le scroll horizontal
 
         // 4. Centrage
         const chartGroup = this.g.append('g')
             .attr('transform', `translate(${w / 2}, ${h / 2})`);
         console.log("DEBUG: chartGroup centré ajouté au SVG");
+
+        // AJOUT DE L'ARRIÈRE-PLAN ICI (en premier)
+        this.drawTimelineBackground(chartGroup, birthRef, minX - padding, maxX + padding);
+        //this.drawTimelineBackground(chartGroup, birthRef, chartWidth);
 
         // 5. Dessin des liens
         console.log("DEBUG: Dessin des liens...");
