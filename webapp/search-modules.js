@@ -26,7 +26,7 @@ window.SearchModule = {
         const matches = this.allNodes.filter(n => {
             const fullName = `${n.firstname} ${n.surname}`.toLowerCase();
             return fullName.includes(query);
-        }).slice(0, 10);
+        }); // .slice(0, 10);
 
         if (matches.length === 0) {
             container.style.display = 'none';

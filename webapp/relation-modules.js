@@ -38,7 +38,7 @@ window.RelationModule = {
 
             const matches = App.nodes.filter(n => 
                 `${n.surname} ${n.firstname} ( ${n.displayBirth} ${n.deceased ? n.displayDeath : ''} )`.toLowerCase().includes(query)
-            ).slice(0, 10);
+            ); //.slice(0, 10);
 
             if (matches.length > 0) {
                 resultsB.innerHTML = matches.map(n => `
