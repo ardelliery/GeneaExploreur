@@ -1,5 +1,5 @@
 /* --- CONFIGURATION DU SERVICE WORKER --- */
-const CACHE_NAME = 'genealogie-mobile-v3.0.0';
+const CACHE_NAME = 'genealogie-mobile-v3.1.0';
 
 // Liste exhaustive des ressources à mettre en cache
 const ASSETS_TO_CACHE = [
@@ -15,6 +15,8 @@ const ASSETS_TO_CACHE = [
   './data.json',
   './logo.png',
   './logo_512.png',
+  'departements-version-simplifiee.geojson',
+  'ch-districts.geojson',
   
   // Icône principale
   //'./icons/apple-touch-icon.png',

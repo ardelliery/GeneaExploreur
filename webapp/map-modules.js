@@ -12,9 +12,43 @@ window.MapModule = {
         this.allNodes = nodes;
         
         this.map = L.map('map').setView([46.6, 2.2], 6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
+
+        // 2. Préparation de la couche GeoJSON (vide au début)
+        // Elle est ajoutée en PREMIER pour être en dessous des marqueurs
+        this.geoLayer = L.geoJSON(null, {
+            style: {
+                color: "#2b6cb0",
+                weight: 1,
+                fillColor: "#f8fafc",
+                fillOpacity: 0.1 // Très discret si OSM fonctionne
+            }
         }).addTo(this.map);
+
+        // --- C'EST ICI QUE L'ON PLACE LE CODE ---
+        
+        // On définit la couche OpenStreetMap sans l'ajouter tout de suite
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        });
+
+        // On écoute l'erreur : si les tuiles ne chargent pas (pas d'internet)
+        osm.on('tileerror', () => {
+            console.error("[Map] Erreur OSM (Hors-ligne ?) -> Affichage du fond GeoJSON");
+            // On rend le GeoJSON bien visible pour qu'il serve de fond
+            this.geoLayer.setStyle({ 
+                fillOpacity: 0.9, 
+                weight: 2,
+                fillColor: "#e2e8f0" 
+            });
+        });
+
+        // Enfin, on ajoute OSM à la carte
+        osm.addTo(this.map);
+
+        // --- FIN DU BLOC ---
+
+        // Charger vos fichiers GeoJSON locaux
+        this.loadGeoJSONData();
 
         if (typeof L.markerClusterGroup === 'function') {
             this.clusters = L.markerClusterGroup({
@@ -29,6 +63,21 @@ window.MapModule = {
 
         this.renderMarkers(this.allNodes);
         this.map.addLayer(this.clusters);
+    },
+
+    async loadGeoJSONData() {
+        const files = ['departements-version-simplifiee.geojson', 'ch-districts.geojson']; 
+        for (const file of files) {
+            try {
+                const response = await fetch(file);
+                if (!response.ok) continue;
+                const data = await response.json();
+                this.geoLayer.addData(data);
+                console.log(`[Map] ${file} chargé.`);
+            } catch (e) {
+                console.warn(`[Map] Impossible de charger ${file} (normal si absent).`);
+            }
+        }
     },
 
     renderMarkers(nodesToRender) {
