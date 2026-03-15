@@ -27,18 +27,41 @@ window.RelationModule = {
         }
     },
 
+    normalizeString(str) {
+        return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    },
+
     setupSearchB() {
         const inputB = document.getElementById('rel-input-b');
         const resultsB = document.getElementById('rel-results-b');
         if (!inputB) return;
 
-        inputB.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase().trim();
+        inputB.addEventListener('input', (e) => {       
+            const query = this.normalizeString(e.target.value).toLowerCase().trim();
+            console.log(`[Recherche] Requête normalisée: ${query}`);
             if (query.length < 2) { resultsB.style.display = 'none'; return; }
+    
+            // 1. Filtrage : on cherche dans le prénom OU le nom
+            const matches = App.nodes.filter(n => {
+                const fullName = this.normalizeString(`${n.firstname} ${n.surname}`).toLowerCase();
+                return fullName.includes(query);
+            });
 
-            const matches = App.nodes.filter(n => 
-                `${n.surname} ${n.firstname} ( ${n.displayBirth} ${n.deceased ? n.displayDeath : ''} )`.toLowerCase().includes(query)
-            ); //.slice(0, 10);
+            // 2. Tri par NOM (surname) puis par PRÉNOM (firstname)
+            matches.sort((a, b) => {
+                // Comparaison des noms de famille
+                const compareName = a.surname.toUpperCase().localeCompare(b.surname.toUpperCase());
+                
+                // Si les noms sont identiques, on compare les prénoms
+                if (compareName === 0) {
+                    return a.firstname.localeCompare(b.firstname);
+                }
+                return compareName;
+            });
+
+            // const matches = App.nodes.filter(n => 
+            //     `${n.surname} ${n.firstname} ( ${n.displayBirth} ${n.deceased ? n.displayDeath : ''} )`.toLowerCase().includes(query)
+            // ); //.slice(0, 10);
 
             if (matches.length > 0) {
                 resultsB.innerHTML = matches.map(n => `
