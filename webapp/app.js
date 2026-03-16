@@ -2,7 +2,7 @@
  * APP.JS - Chef d'orchestre de la PWA Généalogie
  */
  
-const App = {
+window.App = {
     fullData: null,      // Objet complet {nodes, links}
     nodes: [],           // Liste simple des personnes
     currentPerson: null, // Personne actuellement sélectionnée
@@ -184,6 +184,7 @@ if (target) {
      * Lance l'arbre généalogique à partir de la personne sélectionnée
      */
 	viewTreeFromSelected() {
+		//alert("App.viewTreeFromSelected() appelée pour : " + (this.currentPerson ? this.currentPerson.surname : "Aucune personne sélectionnée"));
 		if (this.currentPerson) {
 			closeBottomSheet();
 			// 1. On change de vue d'abord

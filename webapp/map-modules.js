@@ -173,49 +173,65 @@ window.MapModule = {
         this.showSheet();
     },
 
-    openDetails(person) {
+    // FONCTION MUTUALISÉE
+    handlePersonSelection(person) {
+        console.log("[Map] Traitement sélection pour :", person.firstname);
+        
+        // 1. Mise à jour de la personne globale
         App.currentPerson = person;
+
+        // 2. Calcul et application du filtre de lignée
+        const links = App.fullData ? App.fullData.links : [];
+        if (typeof window.getVerticalLineageIds === 'function') {
+            const lineageIds = window.getVerticalLineageIds(person.id, links);
+            this.filterByLineage(lineageIds);
+        }
+
+        // 3. Centrage de la carte sur la personne
+        if (person.lat && person.lon) {
+            this.map.panTo([person.lat, person.lon]);
+        }
+    },
+
+    openDetails(person) {
+        // On appelle la logique commune
+        this.handlePersonSelection(person);
+
+        // On gère uniquement l'affichage de l'interface (UI)
         document.getElementById('sheet-name').textContent = `${person.firstname} ${person.surname.toUpperCase()}`;
         document.getElementById('sheet-dates').textContent = `📅 ${person.displayBirth} ${person.displayDeath ? person.displayDeath + ' ' : ''}`;
+        
         const infoZone = document.getElementById('sheet-info-zone');
         if (infoZone) {
             infoZone.innerHTML = `<p style="margin: 15px 0;">📍 ${person.place || 'Inconnu'}</p>`;
         }
+        
         const mainBtn = document.getElementById('btn-view-tree');
         if (mainBtn) mainBtn.parentElement.style.display = 'block';
+        
         this.showSheet();
     },
 
     selectAndGo(personId) {
-            const person = this.allNodes.find(n => n.id === personId);
-            if (person) {
-                console.log("[Map] Sélection via carrousel :", person.firstname);
-                
-                // 1. Mettre à jour la personne courante dans l'App
-                App.currentPerson = person;
+        const person = this.allNodes.find(n => n.id === personId);
+        if (person) {
+            // 1. Exécuter la logique commune (Filtre + Centrage)
+            this.handlePersonSelection(person);
 
-                // 2. Récupérer les liens et calculer la lignée
-                const links = App.fullData ? App.fullData.links : [];
-                const lineageIds = window.getVerticalLineageIds(person.id, links);
-
-                // 3. Appliquer le filtre sur la carte immédiatement
-                this.filterByLineage(lineageIds);
-
-                // 4. Fermer le carrousel/bottom sheet pour voir le résultat sur la carte
-                //closeBottomSheet();
-
-                // 5. Optionnel : Si vous voulez que le carrousel RESTE sur la carte
-                // au lieu d'aller sur l'arbre, commentez la ligne suivante :
-                App.viewTreeFromSelected(); 
-                
-                // Si vous préférez rester sur la carte, on centre juste la vue :
-                if (person.lat && person.lon) {
-                    this.map.setView([person.lat, person.lon], 12);
-                }
-                //window.TreeModule.render(person);
-                //console.log("[Map] Personne centrée sur la carte et arbre affiché.");
+            // 2. Fermer le carrousel (UI mobile)
+            if (typeof closeBottomSheet === 'function') {
+                closeBottomSheet();
             }
-        },
+
+            // 3. FORCE LA BASCULE VERS LA VUE ARBRE
+            // C'est cette ligne qui fait le changement d'onglet
+            App.viewTreeFromSelected(); 
+            if (window.App && typeof App.viewTreeFromSelected === 'function') {
+                console.log("[Map] Bascule vers la vue Tree demandée");
+                App.viewTreeFromSelected(); 
+            }
+        }
+    },
 
     showSheet() {
         const sheet = document.getElementById('bottom-sheet');
