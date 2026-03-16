@@ -2,12 +2,15 @@
  * TREE-MODULES.JS - Version DEBUG
  */
 const HISTORIC_PERIODS = [
-    { name: "LOUIS XIV", start: 1643, end: 1715, color: "#edf2f7" },
-    { name: "LOUIS XVI", start: 1774, end: 1789, color: "#f7fafc" },
-    { name: "REVOLUTION", start: 1789, end: 1804, color: "#edf2f7" },
-    { name: "1ER EMPIRE", start: 1804, end: 1815, color: "#fefcbf" },
-    { name: "1ERE GUERRE MONDIALE", start: 1914, end: 1918, color: "#fff5f5" },
-    { name: "2EME GUERRE MONDIALE", start: 1939, end: 1945, color: "#f7fafc" },
+    { name: "LOUIS XIV", start: 1638, end: 1715, color: "#fff2d1" },
+    { name: "LOUIS XV", start: 1715, end: 1774, color: "#cbd4f4" },
+    { name: "LOUIS XVI", start: 1774, end: 1789, color: "#fff2d1" },
+    { name: "REVOLUTION", start: 1789, end: 1804, color: "#cbd4f4" },
+    { name: "NAPOLEON BONAPARTE", start: 1804, end: 1815, color: "#fff2d1" },
+    { name: "LOUIS XVIII", start: 1815, end: 1824, color: "#cbd4f4" },
+    { name: "NAPOLEON III", start: 1852, end: 1870, color: "#fff2d1" },
+    { name: "1ERE GUERRE MONDIALE", start: 1914, end: 1918, color: "#f8ceff" },
+    { name: "2EME GUERRE MONDIALE", start: 1939, end: 1945, color: "#f8ceff" },
 ];
 const YEAR_SPACING = 6;
 
