@@ -116,6 +116,9 @@ window.MapModule = {
         if (!allowedIds) {
             this.renderMarkers(this.allNodes);
             if (btn) btn.style.display = 'none'; // On cache le bouton HTML
+            if (this.map) {
+                this.map.setView([46.6, 2.2], 6); 
+            }
             return;
         }
 
@@ -199,16 +202,18 @@ window.MapModule = {
                 this.filterByLineage(lineageIds);
 
                 // 4. Fermer le carrousel/bottom sheet pour voir le résultat sur la carte
-                closeBottomSheet();
+                //closeBottomSheet();
 
                 // 5. Optionnel : Si vous voulez que le carrousel RESTE sur la carte
                 // au lieu d'aller sur l'arbre, commentez la ligne suivante :
-                // App.viewTreeFromSelected(); 
+                App.viewTreeFromSelected(); 
                 
                 // Si vous préférez rester sur la carte, on centre juste la vue :
                 if (person.lat && person.lon) {
                     this.map.setView([person.lat, person.lon], 12);
                 }
+                //window.TreeModule.render(person);
+                //console.log("[Map] Personne centrée sur la carte et arbre affiché.");
             }
         },
 
