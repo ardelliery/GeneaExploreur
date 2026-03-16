@@ -1,5 +1,5 @@
 /* --- CONFIGURATION DU SERVICE WORKER --- */
-const CACHE_NAME = 'genealogie-mobile-v3.1.1';
+const CACHE_NAME = 'genealogie-mobile-v3.1.2';
 
 // Liste exhaustive des ressources à mettre en cache
 const ASSETS_TO_CACHE = [
