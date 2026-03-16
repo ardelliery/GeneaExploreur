@@ -17,7 +17,7 @@ window.MapModule = {
         // Elle est ajoutée en PREMIER pour être en dessous des marqueurs
         this.geoLayer = L.geoJSON(null, {
             style: {
-                color: "#2b6cb0",
+                color: "#afb5bc",
                 weight: 1,
                 fillColor: "#f8fafc",
                 fillOpacity: 0.1 // Très discret si OSM fonctionne
