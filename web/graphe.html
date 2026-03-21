@@ -58,8 +58,9 @@
         .link.fade { opacity: 0.15; }
 
         /* Décoration historique */
-        .hist-label { font-size: 12px; fill: #cbd5e0; font-weight: 900; pointer-events: none; }
-        .year-line { stroke: #e2e8f0; stroke-dasharray: 4,4; }
+        .hist-label { font-size: 12px; fill: #101010; font-weight: 900; pointer-events: none; }
+        .year-line { stroke: #101010; stroke-dasharray: 4,4; }
+
         /* Style pour les conjoints (mariés à la lignée mais pas ancêtres/descendants directs) */
 .node.highlight-spouse circle {
     stroke: var(--secondary) !important; /* Rouge */
@@ -130,8 +131,8 @@ const nodeLayer = container.append("g");
 const defs = svg.append("defs");
 function createMarker(id, color) {
     defs.append("marker")
-        .attr("id", id).attr("viewBox", "0 -5 10 10").attr("refX", 25).attr("refY", 0)
-        .attr("orient", "auto").attr("markerWidth", 6).attr("markerHeight", 6)
+        .attr("id", id).attr("viewBox", "0 -5 10 10").attr("refX", 15).attr("refY", 0)
+        .attr("orient", "auto").attr("markerWidth", 4).attr("markerHeight", 2)
         .append("path").attr("d", "M0,-5L10,0L0,5").attr("fill", color);
 }
 createMarker("arrow-default", "#a0aec0");
@@ -170,13 +171,15 @@ async function init() {
         const linkLayer = container.append("g").attr("class", "links-layer");
         const nodeLayer = container.append("g").attr("class", "nodes-layer");
 
+        drawHistoryDecor(bgLayer);
+
         // 3. DÉFINITION DES FLÈCHES (MARKERS)
         const defs = svg.append("defs");
         function createMarker(id, color) {
             defs.append("marker")
                 .attr("id", id).attr("viewBox", "0 -5 10 10").attr("refX", 25).attr("refY", 0)
                 .attr("orient", "auto").attr("markerWidth", 6).attr("markerHeight", 6)
-                .append("path").attr("d", "M0,-5L10,0L0,5").attr("fill", color);
+                .append("path").attr("d", "M0,-4L12,0L0,5").attr("fill", color);
         }
         createMarker("arrow-default", "#a0aec0"); // Gris
         createMarker("arrow-up", "#2b6cb0");      // Bleu (Ancêtres)
@@ -191,7 +194,8 @@ async function init() {
         // 5. REMPLISSAGE DE LA LISTE DE RECHERCHE (DATALIST)
         const list = d3.select("#names-list");
         allNodesData.sort((a,b) => a.surname.localeCompare(b.surname)).forEach(n => {
-            list.append("option").attr("value", `${n.firstname} ${n.surname.toUpperCase()}`);
+            //list.append("option").attr("value", `${n.firstname} ${n.surname.toUpperCase()}`);
+            list.append("option").attr("value", `${n.firstname} ${n.surname.toUpperCase()} ${n.displayBirth} ${n.displayDeath}`);
         });
 
         // 6. DESSIN DU DÉCOR HISTORIQUE (LIGNES DE TEMPS)
@@ -200,7 +204,7 @@ async function init() {
         // 7. MOTEUR DE FORCE (SIMULATION)
         simulation = d3.forceSimulation(allNodesData)
             .force("link", d3.forceLink(linksData).id(d => d.id).distance(80))
-            .force("charge", d3.forceManyBody().strength(-300))
+            .force("charge", d3.forceManyBody().strength(-500))
             .force("x", d3.forceX(window.innerWidth / 2).strength(0.1))
             // Placement vertical selon l'année de naissance
             .force("y", d3.forceY(d => ((d.computedBirth > 0 ? d.computedBirth : 1850) - START_YEAR) * YEAR_SPACING).strength(2.5))
@@ -345,13 +349,34 @@ function prepareFamilyData(data) {
 		return data;
 	}
 
-// --- LOGIQUE VISUELLE ---
+function drawHistoryDecor(layer) {
+    // On vide le calque avant de dessiner pour éviter les doublons
+    layer.selectAll("*").remove();
 
-function drawHistoryDecor() {
-    for (let yr = 1600; yr <= 2050; yr += 50) {
+    // On dessine de 1500 à 2050
+    for (let yr = 1500; yr <= 2050; yr += 50) {
         const yPos = (yr - START_YEAR) * YEAR_SPACING;
-        bgLayer.append("line").attr("x1", -5000).attr("x2", 5000).attr("y1", yPos).attr("y2", yPos).attr("class", "year-line");
-        bgLayer.append("text").attr("x", 20).attr("y", yPos - 5).attr("class", "hist-label").text(yr);
+
+        // La ligne horizontale
+        layer.append("line")
+            .attr("x1", -5000)
+            .attr("x2", 5000)
+            .attr("y1", yPos)
+            .attr("y2", yPos)
+            .attr("class", "year-line")
+            .style("stroke", "#e2e8f0") // Gris très clair
+            .style("stroke-dasharray", "4,4")
+            .style("stroke-width", "1px");
+
+        // Le texte de l'année
+        layer.append("text")
+            .attr("x", 20)
+            .attr("y", yPos - 5)
+            .attr("class", "hist-label")
+            .style("fill", "#cbd5e0")
+            .style("font-weight", "900")
+            .style("font-size", "12px")
+            .text(yr);
     }
 }
 
@@ -445,7 +470,7 @@ function highlightFamily(root) {
 }
 
 function onSearchInput(val) {
-    const found = allNodesData.find(n => `${n.firstname} ${n.surname.toUpperCase()}` === val);
+    const found = allNodesData.find(n => `${n.firstname} ${n.surname.toUpperCase()} ${n.displayBirth} ${n.displayDeath}` === val);
     if (found) {
         highlightFamily(found);
         svg.transition().duration(1000).call(
