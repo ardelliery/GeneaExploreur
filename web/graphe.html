@@ -120,6 +120,7 @@ let width = window.innerWidth, height = window.innerHeight;
 const YEAR_SPACING = 6; 
 const START_YEAR = 1500;
 const CURRENT_YEAR = new Date().getFullYear();
+const OFFSET_Y = 0; // Ajustez cette valeur (négative pour remonter, positive pour descendre)
 
 const svg = d3.select("#viz").attr("width", width).attr("height", height);
 const container = svg.append("g");
@@ -207,7 +208,10 @@ async function init() {
             .force("charge", d3.forceManyBody().strength(-500))
             .force("x", d3.forceX(window.innerWidth / 2).strength(0.1))
             // Placement vertical selon l'année de naissance
-            .force("y", d3.forceY(d => ((d.computedBirth > 0 ? d.computedBirth : 1850) - START_YEAR) * YEAR_SPACING).strength(2.5))
+            .force("y", d3.forceY(d => {
+                    const basePos = ((d.computedBirth > 0 ? d.computedBirth : 1850) - START_YEAR) * YEAR_SPACING;
+                    return basePos + OFFSET_Y; // On applique la correction ici
+                }).strength(4))
             .force("collision", d3.forceCollide().radius(45));
 
         // 8. CRÉATION DES LIENS
@@ -364,7 +368,7 @@ function drawHistoryDecor(layer) {
             .attr("y1", yPos)
             .attr("y2", yPos)
             .attr("class", "year-line")
-            .style("stroke", "#e2e8f0") // Gris très clair
+            .style("stroke", "#808080") 
             .style("stroke-dasharray", "4,4")
             .style("stroke-width", "1px");
 
@@ -373,7 +377,7 @@ function drawHistoryDecor(layer) {
             .attr("x", 20)
             .attr("y", yPos - 5)
             .attr("class", "hist-label")
-            .style("fill", "#cbd5e0")
+            .style("fill", "#808080")
             .style("font-weight", "900")
             .style("font-size", "12px")
             .text(yr);
