@@ -71,10 +71,29 @@
 .node.highlight-spouse {
     opacity: 1 !important;
 }
+
+/* Style de l'info-bulle flottante */
+#tooltip {
+    position: absolute;
+    display: none; /* Caché par défaut */
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    border-left: 5px solid var(--primary);
+    pointer-events: none; /* L'info-bulle ne doit pas gêner la souris */
+    z-index: 100;
+    min-width: 180px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+#tooltip b { color: var(--primary); font-size: 14px; }
+#tooltip .date { color: #718096; font-weight: bold; }
     </style>
 </head>
 <body>
-
+<div id="tooltip"></div>
 <div id="controls">
     <h3 style="margin:0 0 15px 0; color: var(--primary);">Réseau Généalogique</h3>
     
@@ -94,7 +113,6 @@
 </div>
 
 <svg id="viz"></svg>
-
 <script>
 // --- CONFIGURATION ---
 let width = window.innerWidth, height = window.innerHeight;
@@ -130,41 +148,112 @@ const colorScale = d3.scaleSequential(d3.interpolateViridis).domain([1650, 2025]
 // --- INITIALISATION ---
 async function init() {
     try {
+        // 1. CHARGEMENT DES DONNÉES
+        // Assurez-vous que le fichier se nomme exactement data.json
         rawData = await d3.json("data.json");
         familyData = prepareFamilyData(rawData);
-
         allNodesData = familyData.nodes.map(d => ({...d}));
-        const links = familyData.links.map(d => ({...d}));
+        const linksData = familyData.links.map(d => ({...d}));
 
-        // Liste auto-complétion
+        // 2. CONFIGURATION DU SVG ET DES CALQUES
+        const svg = d3.select("#viz")
+            .attr("width", window.innerWidth)
+            .attr("height", window.innerHeight);
+
+        // Nettoyage si réinitialisation
+        svg.selectAll("*").remove();
+
+        const container = svg.append("g").attr("class", "main-container");
+        
+        // Ordre des calques (Z-index)
+        const bgLayer = container.append("g").attr("class", "background-layer");
+        const linkLayer = container.append("g").attr("class", "links-layer");
+        const nodeLayer = container.append("g").attr("class", "nodes-layer");
+
+        // 3. DÉFINITION DES FLÈCHES (MARKERS)
+        const defs = svg.append("defs");
+        function createMarker(id, color) {
+            defs.append("marker")
+                .attr("id", id).attr("viewBox", "0 -5 10 10").attr("refX", 25).attr("refY", 0)
+                .attr("orient", "auto").attr("markerWidth", 6).attr("markerHeight", 6)
+                .append("path").attr("d", "M0,-5L10,0L0,5").attr("fill", color);
+        }
+        createMarker("arrow-default", "#a0aec0"); // Gris
+        createMarker("arrow-up", "#2b6cb0");      // Bleu (Ancêtres)
+        createMarker("arrow-down", "#ed8936");    // Orange (Descendants)
+
+        // 4. ZOOM ET PAN
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 8])
+            .on("zoom", (e) => container.attr("transform", e.transform));
+        svg.call(zoom);
+
+        // 5. REMPLISSAGE DE LA LISTE DE RECHERCHE (DATALIST)
         const list = d3.select("#names-list");
         allNodesData.sort((a,b) => a.surname.localeCompare(b.surname)).forEach(n => {
             list.append("option").attr("value", `${n.firstname} ${n.surname.toUpperCase()}`);
         });
 
-        drawHistoryDecor();
+        // 6. DESSIN DU DÉCOR HISTORIQUE (LIGNES DE TEMPS)
+        drawHistoryDecor(bgLayer);
 
-        // Moteur de force
+        // 7. MOTEUR DE FORCE (SIMULATION)
         simulation = d3.forceSimulation(allNodesData)
-            .force("link", d3.forceLink(links).id(d => d.id).distance(80))
-            .force("charge", d3.forceManyBody().strength(-250))
-            .force("x", d3.forceX(width / 2).strength(0.1))
-            // Contrainte temporelle verticale (Y)
-            .force("y", d3.forceY(d => ((d.computedBirth > 0 ? d.computedBirth : 1850) - START_YEAR) * YEAR_SPACING).strength(2))
+            .force("link", d3.forceLink(linksData).id(d => d.id).distance(80))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("x", d3.forceX(window.innerWidth / 2).strength(0.1))
+            // Placement vertical selon l'année de naissance
+            .force("y", d3.forceY(d => ((d.computedBirth > 0 ? d.computedBirth : 1850) - START_YEAR) * YEAR_SPACING).strength(2.5))
             .force("collision", d3.forceCollide().radius(45));
 
-        // Dessin des liens
+        // 8. CRÉATION DES LIENS
         link = linkLayer.selectAll(".link")
-            .data(links).enter().append("path")
+            .data(linksData)
+            .enter().append("path")
             .attr("class", d => `link link-${d.type}`);
 
-        // Dessin des nœuds
+        // 9. CRÉATION DES NŒUDS AVEC INTERACTION HOVER (TOOLTIP)
+        let hoverTimer;
+
         node = nodeLayer.selectAll(".node")
-            .data(allNodesData).enter().append("g")
+            .data(allNodesData)
+            .enter().append("g")
             .attr("class", "node")
             .on("click", (e, d) => highlightFamily(d))
-            .call(d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended));
+            .on("mouseover", function(event, d) {
+                // Timer pour l'info-bulle (400ms d'arrêt)
+                hoverTimer = setTimeout(() => {
+                    const tooltip = d3.select("#tooltip");
+                    tooltip.style("display", "block")
+                        .html(`
+                            <b>${d.firstname} ${d.surname.toUpperCase()}</b><br>
+                            <span class="date">📅 ${d.displayBirth} ${d.displayDeath}</span><br>
+                            📍 ${d.place || 'Lieu inconnu'}<br>
+                            <hr style="border:0; border-top:1px solid #eee; margin:5px 0">
+                            <small style="color:#a0aec0">Cliquez pour fixer la lignée</small>
+                        `)
+                        .style("left", (event.pageX + 15) + "px")
+                        .style("top", (event.pageY + 15) + "px");
+                    
+                    // Optionnel : mettre à jour l'info-box de gauche aussi
+                    //d3.select("#info-box").html(`Focus temporaire : ${d.firstname} ${d.surname}`);
+                }, 400);
+            })
+            .on("mousemove", function(event) {
+                d3.select("#tooltip")
+                    .style("left", (event.pageX + 15) + "px")
+                    .style("top", (event.pageY + 15) + "px");
+            })
+            .on("mouseout", function() {
+                clearTimeout(hoverTimer);
+                d3.select("#tooltip").style("display", "none");
+            })
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
 
+        // Ajout des cercles et textes
         node.append("circle")
             .attr("r", 10)
             .attr("fill", d => d.computedBirth > 0 ? colorScale(d.computedBirth) : "#cbd5e0");
@@ -175,25 +264,28 @@ async function init() {
         node.append("text").attr("dy", -16).attr("text-anchor", "middle")
             .text(d => d.firstname ? d.firstname : d.surname.toUpperCase());
 
+        // 10. MISE À JOUR DES POSITIONS (TICK)
         simulation.on("tick", () => {
             link.attr("d", d => {
-                const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+                const dx = d.target.x - d.source.x, 
+                      dy = d.target.y - d.source.y;
+                // Courbure pour les mariages, ligne droite pour la parenté
                 const dr = d.type === 'marriage' ? Math.sqrt(dx * dx + dy * dy) * 1.5 : 0;
                 return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
             });
             node.attr("transform", d => `translate(${d.x},${d.y})`);
         });
 
-        // --- ATTENDRE LA FIN DU CALCUL POUR CENTRER ---
+        // 11. CENTRAGE INITIAL SUR L'ÉPOQUE MODERNE
         simulation.on("end", () => {
             centerOnYear(CURRENT_YEAR);
         });
 
     } catch (error) {
-        document.getElementById("info-box").innerHTML = "<b style='color:red'>Erreur de chargement. Vérifiez data.json</b>";
+        console.error("Erreur d'initialisation:", error);
+        d3.select("#info-box").html("<b style='color:red'>Erreur critique : Vérifiez data.json</b>");
     }
 }
-
 
 
 function prepareFamilyData(data) {
