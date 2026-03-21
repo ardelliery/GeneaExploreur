@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Généalogie - Réseau & Recherche</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root { --primary: #2b6cb0; --secondary: #c53030; --accent: #ed8936; --bg: #f7fafc; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); overflow: hidden; }
+        
+        #controls { 
+            position: absolute; top: 15px; left: 15px; z-index: 10; 
+            background: white; padding: 20px; border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); width: 280px; 
+        }
+        
+        .search-group { margin-bottom: 15px; }
+        input[type="text"] { 
+            width: 100%; padding: 8px; border: 1px solid #cbd5e0; 
+            border-radius: 6px; box-sizing: border-box; margin-bottom: 5px;
+        }
+
+        .node circle { stroke: #fff; stroke-width: 1.5px; cursor: pointer; }
+        .node text { font-size: 11px; pointer-events: none; font-weight: 600; fill: #2d3748; }
+        
+        .hist-label { font-size: 12px; fill: #cbd5e0; font-weight: 900; pointer-events: none; }
+ 
+        /* Nouveaux styles pour une meilleure clarté */
+.link { fill: none; transition: all 0.3s; stroke-opacity: 0.5; }
+.link-parent { stroke: #a0aec0; stroke-width: 1px; }
+.link-marriage { stroke: var(--secondary); stroke-width: 2px; stroke-dasharray: 4,3; stroke-opacity: 0.7; }
+
+/* Styles quand une lignée est active */
+.link.highlight-up { stroke: #3182ce; stroke-width: 3px; stroke-opacity: 1; stroke-dasharray: 0; }
+.link.highlight-down { stroke: var(--accent); stroke-width: 3px; stroke-opacity: 1; stroke-dasharray: 0; }
+.link.highlight-marriage { stroke: var(--secondary); stroke-width: 3px; stroke-opacity: 1; }
+
+.node circle { transition: all 0.3s; stroke-width: 1.5px; }
+.node.fade, .link.fade { opacity: 0.2; } /* Moins radical que 0.1 */
+.node.highlight-up circle { stroke: #3182ce; stroke-width: 4px; r: 13; }
+.node.highlight-down circle { stroke: var(--accent); stroke-width: 4px; r: 13; }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <h3 style="margin:0 0 15px 0; color: var(--primary);">Explorateur de Lignées</h3>
+    
+    <div class="search-group">
+        <label style="font-size:12px; font-weight:bold;">Rechercher un ancêtre :</label>
+        <input type="text" id="search-input" list="names-list" placeholder="Nom ou Prénom..." oninput="onSearchInput(this.value)">
+        <datalist id="names-list"></datalist>
+    </div>
+
+    <button onclick="resetView()" style="width:100%; cursor:pointer; padding:10px; background:#edf2f7; border:1px solid #cbd5e0; border-radius:6px; font-weight:bold;">
+        🏠 Réinitialiser la vue
+    </button>
+    
+    <div id="info-box" style="margin-top:15px; padding-top:15px; border-top:1px solid #edf2f7; font-size:13px; line-height:1.4;">
+        <i>Cliquez sur un nœud pour voir sa lignée.</i>
+    </div>
+</div>
+
+<svg id="viz"></svg>
+
+<script>
+let width = window.innerWidth, height = window.innerHeight;
+const YEAR_SPACING = 6; 
+const START_YEAR = 1500;
+
+const svg = d3.select("#viz").attr("width", width).attr("height", height);
+const container = svg.append("g");
+const bgLayer = container.append("g");
+
+const zoom = d3.zoom().scaleExtent([0.1, 8]).on("zoom", (e) => container.attr("transform", e.transform));
+svg.call(zoom);
+
+let simulation, node, link, familyData, allNodesData;
+const colorScale = d3.scaleSequential(d3.interpolateViridis).domain([1650, 2025]);
+
+async function init() {
+    try {
+        // Chargement des données
+        familyData = await d3.json("data.json");
+        allNodesData = familyData.nodes.map(d => ({...d}));
+        const links = familyData.links.map(d => ({...d}));
+
+        // Remplir la liste de recherche
+        const list = d3.select("#names-list");
+        allNodesData.sort((a,b) => a.surname.localeCompare(b.surname)).forEach(n => {
+            list.append("option").attr("value", `${n.firstname} ${n.surname.toUpperCase()}`);
+        });
+
+        drawHistoryDecor();
+
+        simulation = d3.forceSimulation(allNodesData)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(70))
+            .force("charge", d3.forceManyBody().strength(-200))
+            .force("x", d3.forceX(width / 2).strength(0.07))
+            .force("y", d3.forceY(d => ( (d.birth > 0 ? d.birth : 1850) - START_YEAR) * YEAR_SPACING).strength(2))
+            .force("collision", d3.forceCollide().radius(40));
+
+        link = container.append("g").selectAll(".link")
+            .data(links).enter().append("path")
+            .attr("class", d => `link link-${d.type}`);
+
+        node = container.append("g").selectAll(".node")
+            .data(allNodesData).enter().append("g")
+            .attr("class", "node")
+            .on("click", (e, d) => highlightFamily(d))
+            .call(d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended));
+
+        node.append("circle")
+            .attr("r", 9)
+            .attr("fill", d => d.birth > 0 ? colorScale(d.birth) : "#cbd5e0");
+
+        node.append("text").attr("dy", -15).attr("text-anchor", "middle")
+            .text(d => d.surname);
+
+        simulation.on("tick", () => {
+            link.attr("d", d => {
+                const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+                const dr = d.type === 'marriage' ? Math.sqrt(dx * dx + dy * dy) : 0;
+                return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+            });
+            node.attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+
+    } catch (error) {
+        document.getElementById("info-box").innerHTML = "<b style='color:red'>Erreur : Impossible de charger data.json</b>";
+    }
+}
+
+function drawHistoryDecor() {
+    // On dessine quelques repères temporels en fond
+    for (let yr = 1600; yr <= 2050; yr += 50) {
+        const yPos = (yr - START_YEAR) * YEAR_SPACING;
+        bgLayer.append("line").attr("x1", -5000).attr("x2", 5000).attr("y1", yPos).attr("y2", yPos).attr("class", "year-line")
+            .style("stroke", "#e2e8f0").style("stroke-dasharray", "4,4");
+        bgLayer.append("text").attr("x", 10).attr("y", yPos - 5).attr("class", "hist-label").text(yr);
+    }
+}
+
+function onSearchInput(val) {
+    const found = allNodesData.find(n => `${n.firstname} ${n.surname.toUpperCase()}` === val);
+    if (found) {
+        highlightFamily(found);
+        centerOnNode(found);
+    }
+}
+
+function centerOnNode(target) {
+    const scale = 1.5;
+    svg.transition().duration(1000).call(
+        zoom.transform, 
+        d3.zoomIdentity.translate(width/2, height/2).scale(scale).translate(-target.x, -target.y)
+    );
+}
+
+// function highlightFamily(root) {
+//     const upIds = new Set(), downIds = new Set();
+    
+//     const findUp = (id) => {
+//         upIds.add(id);
+//         familyData.links.filter(l => l.target === id && l.type === 'parent').forEach(l => findUp(l.source));
+//     };
+//     const findDown = (id) => {
+//         downIds.add(id);
+//         familyData.links.filter(l => l.source === id && l.type === 'parent').forEach(l => findDown(l.target));
+//     };
+
+//     findUp(root.id);
+//     findDown(root.id);
+
+//     node.classed("highlight-up", d => upIds.has(d.id))
+//         .classed("highlight-down", d => downIds.has(d.id))
+//         .classed("fade", d => !upIds.has(d.id) && !downIds.has(d.id))
+//         .classed("selected", d => d.id === root.id);
+
+//     link.classed("fade", l => !((upIds.has(l.source) && upIds.has(l.target)) || (downIds.has(l.source) && downIds.has(l.target))));
+    
+//     d3.select("#info-box").html(`
+//         <b style="color:var(--primary)">${root.firstname} ${root.surname.toUpperCase()}</b><br>
+//         📅 Naissance : ${root.birth || 'Inconnue'}<br>
+//         📍 Lieu : ${root.place || 'Non renseigné'}
+//     `);
+// }
+
+function highlightFamily(root) {
+    const upIds = new Set(), downIds = new Set();
+    const upLinks = new Set(), downLinks = new Set();
+    
+    // 1. Parcours ascendant (Parents)
+    const findUp = (id) => {
+        upIds.add(id);
+        familyData.links.forEach(l => {
+            if (l.target === id && l.type === 'parent') {
+                upLinks.add(l); // On mémorise le lien
+                findUp(l.source);
+            }
+        });
+    };
+
+    // 2. Parcours descendant (Enfants)
+    const findDown = (id) => {
+        downIds.add(id);
+        familyData.links.forEach(l => {
+            if (l.source === id && l.type === 'parent') {
+                downLinks.add(l); // On mémorise le lien
+                findDown(l.target);
+            }
+        });
+    };
+
+    findUp(root.id);
+    findDown(root.id);
+
+    // 3. Application visuelle sur les NŒUDS
+    node.classed("highlight-up", d => upIds.has(d.id))
+        .classed("highlight-down", d => downIds.has(d.id))
+        .classed("fade", d => !upIds.has(d.id) && !downIds.has(d.id))
+        .classed("selected", d => d.id === root.id);
+
+    // 4. Application visuelle sur les LIENS
+    link.classed("highlight-up", l => upLinks.has(l))
+        .classed("highlight-down", l => downLinks.has(l))
+        // On garde les mariages de la personne centrale bien visibles
+        .classed("highlight-marriage", l => l.type === 'marriage' && (l.source.id === root.id || l.target.id === root.id))
+        .classed("fade", l => {
+            const isRelated = upLinks.has(l) || downLinks.has(l) || 
+                             (l.type === 'marriage' && (upIds.has(l.source.id) || upIds.has(l.target.id)));
+            return !isRelated;
+        });
+    
+    // Mise à jour de l'info-box
+    d3.select("#info-box").html(`
+        <b style="color:var(--primary)">${root.firstname} ${root.surname.toUpperCase()}</b><br>
+        📅 ${root.birth || '????'} | 📍 ${root.place || '-'}<br>
+        <span style="color:#3182ce">▲ ${upIds.size - 1} ascendants</span> | 
+        <span style="color:var(--accent)">▼ ${downIds.size - 1} descendants</span>
+    `);
+}
+
+function resetView() {
+    node.classed("highlight-up highlight-down fade selected", false);
+    link.classed("fade", false);
+    document.getElementById("search-input").value = "";
+    svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+}
+
+// Fonctions Drag standard
+function dragstarted(event) { if (!event.active) simulation.alphaTarget(0.3).restart(); event.subject.fx = event.subject.x; event.subject.fy = event.subject.y; }
+function dragged(event) { event.subject.fx = event.x; event.subject.fy = event.y; }
+function dragended(event) { if (!event.active) simulation.alphaTarget(0); event.subject.fx = null; event.subject.fy = null; }
+
+init();
+</script>
+</body>
+</html>
