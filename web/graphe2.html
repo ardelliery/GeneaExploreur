@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Généalogie - Réseau Global & Lignées</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      :root {
+        --primary: #2b6cb0; /* Bleu (Ancêtres) */
+        --secondary: #c53030; /* Rouge (Mariages) */
+        --accent: #ed8936; /* Orange (Descendants) */
+        --bg: #f7fafc;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: var(--bg);
+        overflow: hidden;
+      }
+
+      /* Panneau de contrôle */
+      #controls {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        z-index: 10;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        width: 280px;
+      }
+
+      .search-group {
+        margin-bottom: 15px;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #cbd5e0;
+        border-radius: 6px;
+        box-sizing: border-box;
+        margin-top: 5px;
+      }
+
+      /* Styles des Nœuds */
+      .node circle {
+        cursor: pointer;
+        transition: all 0.3s;
+        stroke: #fff;
+        stroke-width: 1.5px;
+      }
+      .node text {
+        font-size: 11px;
+        pointer-events: none;
+        font-weight: 600;
+        fill: #2d3748;
+      }
+
+      /* Styles des Liens */
+      .link {
+        fill: none;
+        transition: all 0.3s;
+        stroke-opacity: 0.5;
+      }
+
+      /* Parent -> Enfant (Par défaut) */
+      .link-parent {
+        stroke: #a0aec0;
+        stroke-width: 2px;
+        marker-end: url(#arrow-default);
+      }
+
+      /* Mariage (Par défaut) */
+      .link-marriage {
+        stroke: var(--secondary);
+        stroke-width: 2px;
+        stroke-dasharray: 5, 4;
+        stroke-opacity: 0.6;
+      }
+
+      /* --- ÉTATS ACTIFS (HIGHLIGHT) --- */
+
+      /* Nœuds */
+      .node.highlight-up circle {
+        stroke: var(--primary);
+        stroke-width: 2px;
+        r: 14;
+      }
+      .node.highlight-down circle {
+        stroke: var(--accent);
+        stroke-width: 2px;
+        r: 14;
+      }
+      .node.selected circle {
+        stroke: #000 !important;
+        stroke-width: 3px;
+      }
+      .node.fade {
+        opacity: 0.2;
+      }
+
+      /* Liens de lignée */
+      .link.highlight-up {
+        stroke: var(--primary) !important;
+        stroke-width: 2px !important;
+        stroke-opacity: 1;
+        marker-end: url(#arrow-up) !important;
+        stroke-dasharray: 0;
+      }
+      .link.highlight-down {
+        stroke: var(--accent) !important;
+        stroke-width: 2px !important;
+        stroke-opacity: 1;
+        marker-end: url(#arrow-down) !important;
+        stroke-dasharray: 0;
+      }
+
+      /* Liens de mariage de la personne concernée */
+      .link.highlight-marriage {
+        stroke: var(--secondary) !important;
+        stroke-width: 2px !important;
+        stroke-opacity: 1;
+        stroke-dasharray: 0;
+      }
+
+      .link.fade {
+        opacity: 0.15;
+      }
+
+      /* Décoration historique */
+      .hist-label {
+        font-size: 12px;
+        fill: #101010;
+        font-weight: 900;
+        pointer-events: none;
+      }
+      .year-line {
+        stroke: #101010;
+        stroke-dasharray: 4, 4;
+      }
+
+      /* Style pour les conjoints (mariés à la lignée mais pas ancêtres/descendants directs) */
+      .node.highlight-spouse circle {
+        stroke: var(--secondary) !important; /* Rouge */
+        stroke-width: 3px;
+        stroke-dasharray:
+          2, 2; /* Optionnel : un petit effet pointillé sur le cercle pour rappeler le lien de mariage */
+      }
+
+      /* On s'assure que ces nœuds ne sont pas estompés */
+      .node.highlight-spouse {
+        opacity: 1 !important;
+      }
+
+      /* Style de l'info-bulle flottante */
+      #tooltip {
+        position: absolute;
+        display: none; /* Caché par défaut */
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        border-left: 5px solid var(--primary);
+        pointer-events: none; /* L'info-bulle ne doit pas gêner la souris */
+        z-index: 100;
+        min-width: 180px;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      #tooltip b {
+        color: var(--primary);
+        font-size: 14px;
+      }
+      #tooltip .date {
+        color: #718096;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="tooltip"></div>
+    <div id="controls">
+      <h3 style="margin: 0 0 15px 0; color: var(--primary)">
+        Réseau Généalogique
+      </h3>
+
+      <div class="search-group">
+        <label style="font-size: 12px; font-weight: bold"
+          >Rechercher un membre :</label
+        >
+        <input
+          type="text"
+          id="search-input"
+          list="names-list"
+          placeholder="Commencez à taper..."
+          oninput="onSearchInput(this.value)"
+        />
+        <datalist id="names-list"></datalist>
+      </div>
+
+      <button
+        onclick="resetView()"
+        style="
+          width: 100%;
+          cursor: pointer;
+          padding: 10px;
+          background: #edf2f7;
+          border: 1px solid #cbd5e0;
+          border-radius: 6px;
+          font-weight: bold;
+        "
+      >
+        🏠 Réinitialiser la vue
+      </button>
+
+      <div
+        id="info-box"
+        style="
+          margin-top: 15px;
+          padding-top: 15px;
+          border-top: 1px solid #edf2f7;
+          font-size: 13px;
+        "
+      >
+        <i
+          >Cliquez sur une personne pour voir sa lignée ascendante et
+          descendante.</i
+        >
+      </div>
+    </div>
+
+    <svg id="viz"></svg>
+    <script>
+      // --- CONFIGURATION ---
+      let width = window.innerWidth,
+        height = window.innerHeight;
+      const YEAR_SPACING = 6;
+      const START_YEAR = 1500;
+      const CURRENT_YEAR = new Date().getFullYear();
+      const OFFSET_Y = 0; // Ajustez cette valeur (négative pour remonter, positive pour descendre)
+
+      const svg = d3.select("#viz").attr("width", width).attr("height", height);
+      const container = svg.append("g");
+      const bgLayer = container.append("g");
+      const linkLayer = container.append("g");
+      const nodeLayer = container.append("g");
+
+      // Définition des flèches (Markers)
+      const defs = svg.append("defs");
+      function createMarker(id, color) {
+        defs
+          .append("marker")
+          .attr("id", id)
+          .attr("viewBox", "0 -5 10 10")
+          .attr("refX", 15)
+          .attr("refY", 0)
+          .attr("orient", "auto")
+          .attr("markerWidth", 4)
+          .attr("markerHeight", 2)
+          .append("path")
+          .attr("d", "M0,-5L10,0L0,5")
+          .attr("fill", color);
+      }
+      createMarker("arrow-default", "#a0aec0");
+      createMarker("arrow-up", "#2b6cb0");
+      createMarker("arrow-down", "#ed8936");
+
+      // Zoom
+      const zoom = d3
+        .zoom()
+        .scaleExtent([0.1, 8])
+        .on("zoom", (e) => container.attr("transform", e.transform));
+      svg.call(zoom);
+
+      let simulation, node, link, familyData, allNodesData;
+      const colorScale = d3
+        .scaleSequential(d3.interpolateViridis)
+        .domain([1650, 2025]);
+
+      // --- INITIALISATION ---
+      async function init() {
+        try {
+          // 1. CHARGEMENT DES DONNÉES
+          // Assurez-vous que le fichier se nomme exactement data.json
+          rawData = await d3.json("data.json");
+          familyData = prepareFamilyData(rawData);
+          allNodesData = familyData.nodes.map((d) => ({ ...d }));
+          const linksData = familyData.links.map((d) => ({ ...d }));
+
+          // 2. CONFIGURATION DU SVG ET DES CALQUES
+          const svg = d3
+            .select("#viz")
+            .attr("width", window.innerWidth)
+            .attr("height", window.innerHeight);
+
+          // Nettoyage si réinitialisation
+          svg.selectAll("*").remove();
+
+          const container = svg.append("g").attr("class", "main-container");
+
+          // Ordre des calques (Z-index)
+          const bgLayer = container
+            .append("g")
+            .attr("class", "background-layer");
+          const linkLayer = container.append("g").attr("class", "links-layer");
+          const nodeLayer = container.append("g").attr("class", "nodes-layer");
+
+          // 1. Extraire les noms uniques et les trier alphabétiquement
+          const surnames = Array.from(
+            new Set(allNodesData.map((d) => d.surname)),
+          ).sort();
+
+          // 2. Créer une échelle qui répartit ces noms sur la largeur de l'écran
+          const xCenterScale = d3
+            .scalePoint()
+            .domain(surnames)
+            .range([100, width - 100]) // On laisse une marge de 100px de chaque côté
+            .padding(0.5);
+
+          drawHistoryDecor(bgLayer);
+
+          // 3. DÉFINITION DES FLÈCHES (MARKERS)
+          const defs = svg.append("defs");
+
+          // 4. DÉFINITION DES DÉGRADÉS ET MARKERS
+          // Dégradé pour les bandes temporelles
+          const gradient = defs
+            .append("linearGradient")
+            .attr("id", "year-gradient")
+            .attr("x1", "0%")
+            .attr("y1", "0%")
+            .attr("x2", "0%")
+            .attr("y2", "100%");
+          gradient
+            .append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", "#f7fafc")
+            .attr("stop-opacity", 0);
+          gradient
+            .append("stop")
+            .attr("offset", "50%")
+            .attr("stop-color", "#e2e8f0")
+            .attr("stop-opacity", 0.8);
+          gradient
+            .append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", "#f7fafc")
+            .attr("stop-opacity", 0);
+
+          function createMarker(id, color) {
+            defs
+              .append("marker")
+              .attr("id", id)
+              .attr("viewBox", "0 -5 10 10")
+              .attr("refX", 25)
+              .attr("refY", 0)
+              .attr("orient", "auto")
+              .attr("markerWidth", 6)
+              .attr("markerHeight", 6)
+              .append("path")
+              .attr("d", "M0,-4L12,0L0,5")
+              .attr("fill", color);
+          }
+          createMarker("arrow-default", "#a0aec0"); // Gris
+          createMarker("arrow-up", "#2b6cb0"); // Bleu (Ancêtres)
+          createMarker("arrow-down", "#ed8936"); // Orange (Descendants)
+
+          // 4. ZOOM ET PAN
+          const zoom = d3
+            .zoom()
+            .scaleExtent([0.1, 8])
+            .on("zoom", (e) => container.attr("transform", e.transform));
+          svg.call(zoom);
+
+          // 5. REMPLISSAGE DE LA LISTE DE RECHERCHE (DATALIST)
+          const list = d3.select("#names-list");
+          allNodesData
+            .sort((a, b) => a.surname.localeCompare(b.surname))
+            .forEach((n) => {
+              //list.append("option").attr("value", `${n.firstname} ${n.surname.toUpperCase()}`);
+              list
+                .append("option")
+                .attr(
+                  "value",
+                  `${n.firstname} ${n.surname.toUpperCase()} ${n.displayBirth} ${n.displayDeath}`,
+                );
+            });
+
+          // 6. DESSIN DU DÉCOR HISTORIQUE (LIGNES DE TEMPS)
+          drawHistoryDecor(bgLayer);
+
+          // 7. MOTEUR DE FORCE (SIMULATION)
+          simulation = d3
+            .forceSimulation(allNodesData)
+            .force(
+              "link",
+              d3
+                .forceLink(linksData)
+                .id((d) => d.id)
+                .distance(120),
+            )
+            .force("charge", d3.forceManyBody().strength(-1000))
+            //.force("x", d3.forceX(window.innerWidth / 2).strength(0.1))
+            .force("x", d3.forceX((d) => xCenterScale(d.surname)).strength(0.5))
+            // Placement vertical selon l'année de naissance
+            .force(
+              "y",
+              d3
+                .forceY((d) => {
+                  const basePos =
+                    ((d.computedBirth > 0 ? d.computedBirth : 1850) -
+                      START_YEAR) *
+                    YEAR_SPACING;
+                  return basePos + OFFSET_Y; // On applique la correction ici
+                })
+                .strength(4),
+            )
+            .force("collision", d3.forceCollide().radius(45));
+
+          // 8. CRÉATION DES LIENS
+          link = linkLayer
+            .selectAll(".link")
+            .data(linksData)
+            .enter()
+            .append("path")
+            .attr("class", (d) => `link link-${d.type}`);
+
+          // 9. CRÉATION DES NŒUDS AVEC INTERACTION HOVER (TOOLTIP)
+          let hoverTimer;
+
+          node = nodeLayer
+            .selectAll(".node")
+            .data(allNodesData)
+            .enter()
+            .append("g")
+            .attr("class", "node")
+            .on("click", (e, d) => highlightFamily(d))
+            .on("mouseover", function (event, d) {
+              // Timer pour l'info-bulle (400ms d'arrêt)
+              hoverTimer = setTimeout(() => {
+                const tooltip = d3.select("#tooltip");
+                tooltip
+                  .style("display", "block")
+                  .html(
+                    `
+                              <b style="color:${stringToColor(d.surname.toUpperCase())}">●</b>
+                              <b>${d.firstname} ${d.surname.toUpperCase()}</b><br>
+                              <span class="date">📅 ${d.displayBirth} ${d.displayDeath}</span><br>
+                              📍 ${d.place || "Lieu inconnu"}<br>
+                              <hr style="border:0; border-top:1px solid #eee; margin:5px 0">
+                              <small style="color:#a0aec0">Cliquez pour fixer la lignée</small>
+                          `,
+                  )
+                  .style("left", event.pageX + 15 + "px")
+                  .style("top", event.pageY + 15 + "px");
+
+                // Optionnel : mettre à jour l'info-box de gauche aussi
+                //d3.select("#info-box").html(`Focus temporaire : ${d.firstname} ${d.surname}`);
+              }, 400);
+            })
+            .on("mousemove", function (event) {
+              d3.select("#tooltip")
+                .style("left", event.pageX + 15 + "px")
+                .style("top", event.pageY + 15 + "px");
+            })
+            .on("mouseout", function () {
+              clearTimeout(hoverTimer);
+              d3.select("#tooltip").style("display", "none");
+            })
+            .call(
+              d3
+                .drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended),
+            );
+
+          // Ajout des cercles et textes
+          //   node
+          //     .append("circle")
+          //     .attr("r", 10)
+          //     .attr("fill", (d) =>
+          //       d.computedBirth > 0 ? colorScale(d.computedBirth) : "#cbd5e0",
+          //     );
+
+          node
+            .append("circle")
+            .attr("r", 10)
+            .attr("fill", (d) => stringToColor(d.surname.toUpperCase())) // Couleur par Nom
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 1.5);
+
+          node
+            .append("text")
+            .attr("dy", -28)
+            .attr("text-anchor", "middle")
+            .text((d) => (d.firstname ? `${d.surname.toUpperCase()}` : ""));
+
+          node
+            .append("text")
+            .attr("dy", -16)
+            .attr("text-anchor", "middle")
+            .text((d) => (d.firstname ? d.firstname : d.surname.toUpperCase()));
+
+          // 10. MISE À JOUR DES POSITIONS (TICK)
+          simulation.on("tick", () => {
+            link.attr("d", (d) => {
+              const dx = d.target.x - d.source.x,
+                dy = d.target.y - d.source.y;
+              // Courbure pour les mariages, ligne droite pour la parenté
+              const dr =
+                d.type === "marriage" ? Math.sqrt(dx * dx + dy * dy) * 1.5 : 0;
+              return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+            });
+            node.attr("transform", (d) => `translate(${d.x},${d.y})`);
+          });
+
+          // 11. CENTRAGE INITIAL SUR L'ÉPOQUE MODERNE
+          simulation.on("end", () => {
+            centerOnYear(CURRENT_YEAR);
+          });
+        } catch (error) {
+          console.error("Erreur d'initialisation:", error);
+          d3.select("#info-box").html(
+            "<b style='color:red'>Erreur critique : Vérifiez data.json</b>",
+          );
+        }
+      }
+
+      function prepareFamilyData(data) {
+        // 1. Initialisation du calcul des dates (votre algo original)
+        data.nodes.forEach((n) => {
+          n.computedBirth = n.birth > 0 ? n.birth : null;
+        });
+
+        let changed = true;
+        let iterations = 0;
+        while (changed && iterations < 10) {
+          changed = false;
+          iterations++;
+          data.links.forEach((link) => {
+            if (link.type !== "parent") return;
+            const source = data.nodes.find((n) => n.id === link.source);
+            const target = data.nodes.find((n) => n.id === link.target);
+            if (!source || !target) return;
+
+            if (source.computedBirth && !target.computedBirth) {
+              target.computedBirth = source.computedBirth + 30;
+              changed = true;
+            } else if (target.computedBirth && !source.computedBirth) {
+              source.computedBirth = target.computedBirth - 30;
+              changed = true;
+            }
+          });
+        }
+
+        const avgBirth =
+          d3.mean(
+            data.nodes.filter((n) => n.birth > 0),
+            (n) => n.birth,
+          ) || 1900;
+
+        // 2. Génération des champs d'affichage définitifs
+        data.nodes.forEach((n) => {
+          // Finalisation du computedBirth si toujours nul
+          if (!n.computedBirth) n.computedBirth = Math.round(avgBirth);
+
+          // A. Formatage Naissance (Ex: "1970" ou "~1940")
+          if (n.birth > 0) {
+            n.displayBirth = `${n.birth}`;
+          } else {
+            n.displayBirth = `~${Math.round(n.computedBirth)}`;
+          }
+
+          // B. Formatage Décès (Ex: "†" ou "† 1995")
+          const isDead = n.deceased === 1 || (n.death_year && n.death_year > 0);
+          n.displayDeath = "";
+          if (isDead) {
+            n.displayDeath = "†"; // Caractère de la croix mortuaire
+            if (n.death_year && n.death_year > 0) {
+              n.displayDeath += ` ${n.death_year}`;
+            }
+            console.log(
+              `DEBUG: ${n.surname} display : ${n.displayBirth} // ${n.displayDeath}`,
+            );
+          }
+        });
+
+        return data;
+      }
+
+      //   function stringToColor(str) {
+      //     let hash = 0;
+      //     for (let i = 0; i < str.length; i++) {
+      //       hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      //     }
+      //     // On génère une couleur HSL plutôt que RGB pour garantir une bonne luminosité
+      //     // (on évite les couleurs trop sombres ou trop claires)
+      //     const h = Math.abs(hash % 360);
+      //     return `hsl(${h}, 70%, 50%)`;
+      //   }
+
+      function stringToColor(name) {
+        let hash = 0;
+        const str = name.toUpperCase();
+        for (let i = 0; i < str.length; i++) {
+          // Un multiplicateur premier (31) aide à mieux répartir les noms
+          hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        // On utilise le nombre d'or pour distribuer les teintes sur 360 degrés
+        const h = Math.abs(hash * 137.508) % 360;
+
+        // On retourne une couleur équilibrée :
+        // Saturation 70% pour l'éclat, Luminosité 50% pour la lisibilité
+        return `hsl(${h}, 70%, 50%)`;
+      }
+
+      function drawHistoryDecor(layer) {
+        layer.selectAll("*").remove();
+
+        const bandHeight = 100; // Hauteur de la zone dégradée (le "flou")
+
+        for (let yr = 1500; yr <= 2050; yr += 50) {
+          const yPos = (yr - START_YEAR) * YEAR_SPACING;
+
+          // Le rectangle dégradé
+          layer
+            .append("rect")
+            .attr("x", -5000)
+            .attr("y", yPos - bandHeight / 2) // Centré sur l'année
+            .attr("width", 10000)
+            .attr("height", bandHeight)
+            .attr("fill", "url(#year-gradient)")
+            .style("pointer-events", "none");
+
+          // Le texte de l'année (plus discret)
+          layer
+            .append("text")
+            .attr("x", -700)
+            .attr("y", yPos + 4)
+            .attr("class", "hist-label")
+            .style("fill", "#a0aec0")
+            .style("font-size", "20px")
+            .style("font-weight", "bold")
+            .style("letter-spacing", "2px")
+            .text(yr);
+        }
+      }
+      //   function drawHistoryDecor(layer) {
+      //     // On vide le calque avant de dessiner pour éviter les doublons
+      //     layer.selectAll("*").remove();
+
+      //     // On dessine de 1500 à 2050
+      //     for (let yr = 1500; yr <= 2050; yr += 50) {
+      //       const yPos = (yr - START_YEAR) * YEAR_SPACING;
+
+      //       // La ligne horizontale
+      //       layer
+      //         .append("line")
+      //         .attr("x1", -5000)
+      //         .attr("x2", 5000)
+      //         .attr("y1", yPos)
+      //         .attr("y2", yPos)
+      //         .attr("class", "year-line")
+      //         .style("stroke", "#808080")
+      //         .style("stroke-dasharray", "4,4")
+      //         .style("stroke-width", "1px");
+
+      //       // Le texte de l'année
+      //       layer
+      //         .append("text")
+      //         .attr("x", 20)
+      //         .attr("y", yPos - 5)
+      //         .attr("class", "hist-label")
+      //         .style("fill", "#808080")
+      //         .style("font-weight", "900")
+      //         .style("font-size", "12px")
+      //         .text(yr);
+      //     }
+      //   }
+
+      // Fonction pour centrer sur une année précise
+      function centerOnYear(year) {
+        const targetY = (year - START_YEAR) * YEAR_SPACING;
+        svg
+          .transition()
+          .duration(1500)
+          .call(
+            zoom.transform,
+            d3.zoomIdentity
+              .translate(width / 2, height / 2)
+              .scale(0.8)
+              .translate(-width / 2, -targetY),
+          );
+      }
+
+      function highlightFamily(root) {
+        const upIds = new Set(),
+          downIds = new Set();
+        const upLinks = new Set(),
+          downLinks = new Set();
+        const spouseIds = new Set(); // Nouveau : pour stocker les conjoints
+
+        // 1. Trouver les ancêtres
+        const findUp = (id) => {
+          upIds.add(id);
+          familyData.links.forEach((l) => {
+            if (l.target === id && l.type === "parent") {
+              upLinks.add(l.source + "-" + l.target);
+              findUp(l.source);
+            }
+          });
+        };
+
+        // 2. Trouver les descendants
+        const findDown = (id) => {
+          downIds.add(id);
+          familyData.links.forEach((l) => {
+            if (l.source === id && l.type === "parent") {
+              downLinks.add(l.source + "-" + l.target);
+              findDown(l.target);
+            }
+          });
+        };
+
+        findUp(root.id);
+        findDown(root.id);
+
+        // 3. Identifier les conjoints hors-lignée
+        familyData.links.forEach((l) => {
+          if (l.type === "marriage") {
+            const sInLineage = upIds.has(l.source) || downIds.has(l.source);
+            const tInLineage = upIds.has(l.target) || downIds.has(l.target);
+
+            // Si l'un est dans la lignée et l'autre non, on marque celui qui n'y est pas
+            if (sInLineage && !tInLineage) spouseIds.add(l.target);
+            if (tInLineage && !sInLineage) spouseIds.add(l.source);
+            // Cas particulier : les deux conjoints de la personne racine
+            if (l.source === root.id) spouseIds.add(l.target);
+            if (l.target === root.id) spouseIds.add(l.source);
+          }
+        });
+
+        // 4. Appliquer les styles aux NŒUDS
+        node
+          .classed("highlight-up", (d) => upIds.has(d.id))
+          .classed("highlight-down", (d) => downIds.has(d.id))
+          .classed(
+            "highlight-spouse",
+            (d) =>
+              spouseIds.has(d.id) && !upIds.has(d.id) && !downIds.has(d.id),
+          )
+          .classed(
+            "fade",
+            (d) =>
+              !upIds.has(d.id) && !downIds.has(d.id) && !spouseIds.has(d.id),
+          )
+          .classed("selected", (d) => d.id === root.id);
+
+        // 5. Appliquer les styles aux LIENS
+        link.each(function (l) {
+          const linkId =
+            (typeof l.source === "object" ? l.source.id : l.source) +
+            "-" +
+            (typeof l.target === "object" ? l.target.id : l.target);
+          const isUp = upLinks.has(linkId);
+          const isDown = downLinks.has(linkId);
+
+          const sId = typeof l.source === "object" ? l.source.id : l.source;
+          const tId = typeof l.target === "object" ? l.target.id : l.target;
+
+          // Un mariage est visible si l'un des deux appartient à la lignée
+          const isMarriageOfLineage =
+            l.type === "marriage" &&
+            (upIds.has(sId) ||
+              upIds.has(tId) ||
+              downIds.has(sId) ||
+              downIds.has(tId) ||
+              sId === root.id ||
+              tId === root.id);
+
+          d3.select(this)
+            .classed("highlight-up", isUp)
+            .classed("highlight-down", isDown)
+            .classed("highlight-marriage", isMarriageOfLineage)
+            .classed("fade", !(isUp || isDown || isMarriageOfLineage));
+        });
+
+        d3.select("#info-box").html(`
+          <b style="color:${stringToColor(root.surname.toUpperCase())}">●</b>
+          <b style="color:var(--primary)">${root.firstname} ${root.surname.toUpperCase()}</b><br>
+          📅 ${root.displayBirth} ${root.displayDeath} | 📍 ${root.place || "-"}<br>
+          <span style="color:#3182ce">▲ ${upIds.size - 1} ascendants</span> |
+          <span style="color:var(--accent)">▼ ${downIds.size - 1} descendants</span>
+      `);
+      }
+
+      function onSearchInput(val) {
+        const found = allNodesData.find(
+          (n) =>
+            `${n.firstname} ${n.surname.toUpperCase()} ${n.displayBirth} ${n.displayDeath}` ===
+            val,
+        );
+        if (found) {
+          highlightFamily(found);
+          svg
+            .transition()
+            .duration(1000)
+            .call(
+              zoom.transform,
+              d3.zoomIdentity
+                .translate(width / 2, height / 2)
+                .scale(1.4)
+                .translate(-found.x, -found.y),
+            );
+        }
+      }
+
+      function resetView() {
+        node.classed("highlight-up highlight-down fade selected", false);
+        link.classed(
+          "highlight-up highlight-down highlight-marriage fade",
+          false,
+        );
+        document.getElementById("search-input").value = "";
+        svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+      }
+
+      function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+      }
+      function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+      }
+      function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+      }
+
+      init();
+    </script>
+  </body>
+</html>
