@@ -69,7 +69,6 @@ window.App = {
 			window.MapModule.filterByLineage(null);
 		}
 
-		window.TreeModule.resetView();
 		window.NetworkModule.resetFilter();
 
 		// 4. Si vous voulez aussi vider les résultats de recherche affichés

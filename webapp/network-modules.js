@@ -150,16 +150,36 @@ window.NetworkModule = {
 
     this.nodeElements
       .append("text")
-      .attr("dy", -18)
+      .attr("dy", -28)
+      .attr("text-anchor", "middle")
+      .style("font-size", "12px")
+      .text((d) => d.surname.toUpperCase());
+
+    this.nodeElements
+      .append("text")
+      .attr("dy", -14)
       .attr("text-anchor", "middle")
       .style("font-size", "12px")
       .text((d) => d.firstname);
 
     this.simulation.on("tick", () => {
       this.linkElements.attr("d", (d) => {
-        const dr = d.type === "marriage" ? 150 : 0;
-        return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+        const sx = d.source.x,
+          sy = d.source.y;
+        const tx = d.target.x,
+          ty = d.target.y;
+
+        if (d.type === "marriage") {
+          // Créer une courbe pour les mariages
+          const dx = tx - sx,
+            dy = ty - sy;
+          const dr = Math.sqrt(dx * dx + dy * dy) * 1.5; // Courbure
+          return `M${sx},${sy}A${dr},${dr} 0 0,1 ${tx},${ty}`;
+        }
+        // Ligne droite pour les parents-enfants
+        return `M${sx},${sy}L${tx},${ty}`;
       });
+
       this.nodeElements.attr("transform", (d) => `translate(${d.x},${d.y})`);
     });
   },
@@ -167,49 +187,54 @@ window.NetworkModule = {
   selectPerson(person) {
     if (!person) return;
 
-    console.log("[Network] Filtrage visuel pour :", person.surname);
-
-    // 1. On récupère les IDs de la lignée via la fonction globale de App.js
-    // On utilise App.fullData.links (les données originales non transformées)
+    // 1. Calcul de la lignée verticale (SANG)
     const lineageIds = window.getVerticalLineageIds(
       person.id,
       window.App.fullData.links,
     );
 
-    // 2. On change l'apparence des NOEUDS
+    // 2. Calcul des CONJOINTS (Mariages directs avec la lignée)
+    const partnerIds = new Set();
+    window.App.fullData.links.forEach((l) => {
+      if (l.type === "marriage") {
+        const sId = typeof l.source === "object" ? l.source.id : l.source;
+        const tId = typeof l.target === "object" ? l.target.id : l.target;
+
+        if (lineageIds.has(sId)) partnerIds.add(tId);
+        if (lineageIds.has(tId)) partnerIds.add(sId);
+      }
+    });
+
+    // 3. Mise à jour visuelle des NOEUDS
     this.nodeElements
       .transition()
       .duration(300)
-      .style("opacity", (d) => (lineageIds.has(d.id) ? 1 : 0.1))
-      .style("filter", (d) =>
-        lineageIds.has(d.id) ? "none" : "grayscale(100%)",
+      .style("opacity", (d) =>
+        lineageIds.has(d.id) || partnerIds.has(d.id) ? 1 : 0.1,
       );
 
-    // 3. On change l'apparence des LIENS
+    // Ajout du cercle en pointillés rouges pour la lignée directe uniquement
+    this.nodeElements
+      .select("circle")
+      .attr("stroke", (d) => (lineageIds.has(d.id) ? "#e53e3e" : "#fff"))
+      .attr("stroke-width", (d) => (lineageIds.has(d.id) ? 3 : 2))
+      .attr("stroke-dasharray", (d) => (lineageIds.has(d.id) ? "4,2" : "none"));
+
+    // 4. Mise à jour visuelle des LIENS
     this.linkElements
       .transition()
       .duration(300)
       .style("opacity", (d) => {
-        // Un lien est visible si la source ET la cible sont dans la lignée
         const sId = typeof d.source === "object" ? d.source.id : d.source;
         const tId = typeof d.target === "object" ? d.target.id : d.target;
-        return lineageIds.has(sId) && lineageIds.has(tId) ? 1 : 0.05;
-      });
-
-    // 4. Zoom automatique sur la personne sélectionnée
-    const node = this.allNodes.find((n) => n.id === person.id);
-    if (node) {
-      this.svg
-        .transition()
-        .duration(750)
-        .call(
-          this.zoom.transform,
-          d3.zoomIdentity
-            .translate(window.innerWidth / 2, window.innerHeight / 2)
-            .scale(1.2)
-            .translate(-node.x, -node.y),
-        );
-    }
+        // On affiche le lien si les deux extrémités sont visibles (Lignée ou Conjoint)
+        return (lineageIds.has(sId) || partnerIds.has(sId)) &&
+          (lineageIds.has(tId) || partnerIds.has(tId))
+          ? 1
+          : 0.05;
+      })
+      .attr("stroke", (d) => (d.type === "marriage" ? "#f687b3" : "#cbd5e0"))
+      .attr("stroke-width", (d) => (d.type === "marriage" ? 3 : 2));
   },
 
   highlightFamily(root) {
