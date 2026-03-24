@@ -169,6 +169,10 @@
 			</div>
 		</section>
 
+        <section id="network-view" class="app-view">
+            <svg id="network-viz" style="width: 100%; height: 100%; background: #f8fafc;"></svg>
+        </section>
+
 		<div id="fullscreen-selector" class="fs-overlay">
 			<div class="fs-header">
 				<input type="text" id="fs-search-input" placeholder="Tapez le nom de la cible...">
@@ -186,6 +190,9 @@
             </div>
 			<div class="tab-item" onclick="App.switchView('relation')">
                 <span class="tab-icon">🔍</span>LIEN
+            </div>
+            <div class="tab-item" id="tab-network" onclick="App.switchView('network')">
+                <span class="tab-icon">🕸️</span>RÉSEAU
             </div>
         </nav>
     </div>
@@ -218,6 +225,7 @@
     <script src="map-modules.js"></script>
     <script src="tree-modules.js"></script>
     <script src="relation-modules.js"></script>
+    <script src="network-modules.js"></script>
     <script src="search-modules.js"></script>
     <script src="app.js"></script>
 

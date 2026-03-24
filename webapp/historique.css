@@ -594,3 +594,26 @@ body, html {
         font-size: 14px; /* Un peu plus grand pour le tactile */
     }
 }
+
+/* Styles pour le graphe de réseau */
+.link {
+    stroke-width: 2px;
+    stroke-opacity: 0.6;
+    stroke-dasharray: 2,2; /* Pour un look plus "toile d'araignée" */
+}
+
+.link-marriage {
+    stroke: #f687b3 !important; /* Rose pour les mariages */
+    stroke-dasharray: none;
+}
+
+.node circle {
+    stroke: #fff;
+    stroke-width: 2px;
+}
+
+.node text {
+    pointer-events: none;
+    font-weight: 500;
+    text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff; /* Halo pour lisibilité */
+}

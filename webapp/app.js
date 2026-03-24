@@ -43,6 +43,7 @@ window.App = {
 		MapModule.init(this.nodes);
 		TreeModule.init(this.fullData); // PAS de données ici, juste l'initialisation du SVG
 		RelationModule.init();
+		NetworkModule.init(this.fullData);
 		SearchModule.init(this.nodes);
 		console.log("Application prête !");
 	//} catch (error) {
@@ -67,6 +68,9 @@ window.App = {
 		if (window.MapModule) {
 			window.MapModule.filterByLineage(null);
 		}
+
+		window.TreeModule.resetView();
+		window.NetworkModule.resetFilter();
 
 		// 4. Si vous voulez aussi vider les résultats de recherche affichés
 		const results = document.getElementById('search-results');
@@ -177,6 +181,12 @@ if (target) {
 			TreeModule.render(this.currentPerson);
 		}
 		
+		if (viewName === 'network') {
+            console.log("[App] Activation du graphe de réseau");
+            // On demande au module de démarrer/redémarrer la simulation D3
+            // On peut lui passer la personne actuelle pour un focus automatique
+            NetworkModule.render(this.currentPerson);
+		}
 	},
 
 
