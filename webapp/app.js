@@ -174,6 +174,7 @@ if (target) {
 		}
 		
 		if (viewName === 'map') {
+			MapModule.handlePersonSelection(this.currentPerson);
 			MapModule.refresh();
 		} else if (viewName === 'tree') {
 			console.log("[App] Initialisation du module Tree pour :", this.currentPerson?.surname);
