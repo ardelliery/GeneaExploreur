@@ -69,6 +69,9 @@ window.NetworkModule = {
       this.container.select(".timeline-bg").lower();
     }
 
+// --- LOGIQUE DE SÉLECTION DE LA CIBLE ---
+    let target = null;
+
     // 2. LOGIQUE DES 3 MODES
 
     // MODE 3 : Chemin entre A et B (Prioritaire)
@@ -84,12 +87,17 @@ window.NetworkModule = {
       if (path) {
         console.log("[Network] Mode 3 : Affichage Chemin Rouge");
         this.applyPathStyle(path);
+        setTimeout(
+          () => this.centerOnPerson(window.RelationModule.selectedA),
+          200,
+        );
         return; // On sort, le travail est fait
       }
     }
 
     // MODE 2 : Une personne sélectionnée (Lignée standard)
-    const target = selectedPerson || window.App.currentPerson;
+    //const target = selectedPerson || window.App.currentPerson;
+    target = selectedPerson || window.App.currentPerson;
     if (target) {
       console.log("[Network] Mode 2 : Affichage Lignée de", target.surname);
       this.applyLineageStyle(target);
@@ -99,6 +107,40 @@ window.NetworkModule = {
       console.log("[Network] Mode 1 : Vue Globale");
       this.resetFilter();
     }
+    if (target) {
+        // On attend que la simulation ait fait quelques "ticks" 
+        // 500ms est le "sweet spot" pour que les positions soient exploitables
+        setTimeout(() => {
+            this.centerOnPerson(target);
+        }, 500);
+    }
+  },
+
+  centerOnPerson(person) {
+    if (!person || !this.svg || !this.zoom) return;
+
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    const node = this.allNodes.find((n) => n.id === person.id);
+    if (!node) return;
+
+    // SÉCURITÉ : Si la simulation n'a pas encore calculé x et y,
+    // on utilise le centre par défaut pour éviter le saut à (0,0)
+    const posX = node.x || width / 2;
+    const posY = node.y || height / 2;
+
+    const scale = 0.8;
+    const transform = d3.zoomIdentity
+      .translate(width / 2, height / 2)
+      .scale(scale)
+      .translate(-posX, -posY);
+
+    this.svg
+      .transition()
+      .duration(1000)
+      .ease(d3.easePolyOut) // Transition plus douce
+      .call(this.zoom.transform, transform);
   },
 
   drawTimelineBackground(container, birthRef, xMin, xMax) {
