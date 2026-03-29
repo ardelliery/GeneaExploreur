@@ -63,13 +63,13 @@ window.NetworkModule = {
 
       // On dessine le fond.
       // xMin et xMax sont ici très larges pour couvrir tout l'écran
-      //this.drawTimelineBackground(this.container, 1850, -1000, 2000);
+      this.drawTimelineBackground(this.container, this.START_YEAR, -800, 2000);
 
       // On s'assure que le fond passe derrière les liens et les nœuds
       this.container.select(".timeline-bg").lower();
     }
 
-// --- LOGIQUE DE SÉLECTION DE LA CIBLE ---
+    // --- LOGIQUE DE SÉLECTION DE LA CIBLE ---
     let target = null;
 
     // 2. LOGIQUE DES 3 MODES
@@ -108,11 +108,11 @@ window.NetworkModule = {
       this.resetFilter();
     }
     if (target) {
-        // On attend que la simulation ait fait quelques "ticks" 
-        // 500ms est le "sweet spot" pour que les positions soient exploitables
-        setTimeout(() => {
-            this.centerOnPerson(target);
-        }, 500);
+      // On attend que la simulation ait fait quelques "ticks"
+      // 500ms est le "sweet spot" pour que les positions soient exploitables
+      setTimeout(() => {
+        this.centerOnPerson(target);
+      }, 500);
     }
   },
 
@@ -144,16 +144,13 @@ window.NetworkModule = {
   },
 
   drawTimelineBackground(container, birthRef, xMin, xMax) {
-    // On dessine de xMin à xMax pour que ça colle à l'arbre
     const width = xMax - xMin;
-
     const bg = container.append("g").attr("class", "timeline-bg");
-    const xOffset = -width / 2;
 
-    // 1. Dessin des périodes historiques
+    // 1. Périodes historiques (on baisse l'opacité pour laisser respirer les dégradés)
     HISTORIC_PERIODS.forEach((p) => {
-      const yStart = (p.start - birthRef) * YEAR_SPACING;
-      const yEnd = (p.end - birthRef) * YEAR_SPACING;
+      const yStart = (p.start - birthRef) * this.YEAR_SPACING;
+      const yEnd = (p.end - birthRef) * this.YEAR_SPACING;
 
       bg.append("rect")
         .attr("x", xMin)
@@ -161,49 +158,45 @@ window.NetworkModule = {
         .attr("width", width)
         .attr("height", yEnd - yStart)
         .attr("fill", p.color)
-        .attr("opacity", 0.5);
-
-      bg.append("text")
-        .attr("x", xMin + 10)
-        .attr("y", yStart + 15)
-        .attr("fill", "#a0aec0")
-        .style("font-size", "16px")
-        .style("font-weight", "bold")
-        .text(p.name);
+        .attr("opacity", 0.08); // Très léger
     });
 
-    // 2. Lignes tous les 50 ans
+    // 2. Zones de dégradé tous les 50 ans
+    const zoneHeight = 100; // Largeur du "flou" en pixels
+
     for (let yr = 1600; yr <= 2050; yr += 50) {
-      const yPos = (yr - birthRef) * YEAR_SPACING;
+      const yCenter = (yr - birthRef) * this.YEAR_SPACING;
 
-      bg.append("line")
-        .attr("x1", xMin)
-        .attr("x2", xMax)
-        .attr("y1", yPos)
-        .attr("y2", yPos)
-        .attr("stroke", "#4a5568") // Gris foncé (Slate 700)
-        .attr("stroke-width", "1.5px")
-        .attr("stroke-dasharray", "8,4") // Tirets plus longs pour être plus "marqués"
-        .style("opacity", "0.4"); // Légère transparence pour ne pas gêner les liens
+      // Le rectangle de dégradé
+      bg.append("rect")
+        .attr("x", xMin)
+        .attr("y", yCenter - zoneHeight / 2)
+        .attr("width", width)
+        .attr("height", zoneHeight)
+        .attr("fill", "url(#year-gradient)")
+        .style("pointer-events", "none");
 
-      // 2. Le Texte avec effet de Halo (pour la lisibilité)
-      // On dessine d'abord le même texte en blanc plus épais dessous
+      // Texte de l'année (centré dans le flou)
+      const textAnchorX = xMin + 20;
+
+      // Halo blanc pour le texte
       bg.append("text")
-        .attr("x", xMin + 15)
-        .attr("y", yPos - 8)
+        .attr("x", textAnchorX)
+        .attr("y", yCenter + 5)
         .attr("fill", "white")
         .attr("stroke", "white")
-        .attr("stroke-width", "4px")
-        .style("font-size", "14px")
+        .attr("stroke-width", "3px")
+        .style("font-size", "24px")
         .style("font-weight", "bold")
+        .style("opacity", 0.6)
         .text(yr);
 
-      // Puis le texte réel par-dessus
+      // Texte réel
       bg.append("text")
-        .attr("x", xMin + 15)
-        .attr("y", yPos - 8)
-        .attr("fill", "#2d3748") // Presque noir
-        .style("font-size", "14px")
+        .attr("x", textAnchorX)
+        .attr("y", yCenter + 5)
+        .attr("fill", "#718096")
+        .style("font-size", "24px")
         .style("font-weight", "bold")
         .text(yr);
     }
@@ -559,6 +552,33 @@ window.NetworkModule = {
   setupMarkers() {
     let defs = this.svg.select("defs");
     if (defs.empty()) defs = this.svg.append("defs");
+
+    // Dégradé pour les zones de 50 ans (Transparent -> Couleur -> Transparent)
+    const grad = defs
+      .append("linearGradient")
+      .attr("id", "year-gradient")
+      .attr("x1", "0%")
+      .attr("x2", "0%")
+      .attr("y1", "0%")
+      .attr("y2", "100%");
+
+    grad
+      .append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "#4a5568")
+      .attr("stop-opacity", 0);
+    grad
+      .append("stop")
+      .attr("offset", "50%")
+      .attr("stop-color", "#4a5568")
+      .attr("stop-opacity", 0.15);
+    grad
+      .append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#4a5568")
+      .attr("stop-opacity", 0);
+
+    // Ton code existant pour les flèches...
     const createArrow = (id, color) => {
       defs
         .append("marker")
