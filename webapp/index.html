@@ -1,227 +1,566 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>Généalogie Mobile</title>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#2d3748">
 
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="theme-color" content="#2d3748" />
 
-    <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="icons/apple-launch-1170x2532.png">
-    <link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" href="icons/apple-launch-1284x2778.png">
-    <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="icons/apple-launch-1179x2556.png">
-    <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="icons/apple-launch-1290x2796.png">
-	
-	
-	<link rel="apple-touch-startup-image" href="icons/apple-splash-1206-2622.jpg" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
-	<link rel="apple-touch-startup-image" href="icons/apple-splash-1290-2796.jpg" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
-	<link rel="apple-touch-startup-image" href="icons/apple-splash-1320-2868.jpg" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
-	<link rel="apple-touch-startup-image" href="icons/apple-splash-1488-2266.jpg" media="(device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
-	<link rel="apple-touch-startup-image" href="icons/apple-splash-1668-2388.jpg" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
-	<link rel="apple-touch-startup-image" href="icons/apple-splash-2048-2732.jpg" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
-	<link rel="apple-touch-startup-image" href="icons/apple-splash-2868-1320.jpg" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)">
-	<link rel="apple-touch-startup-image" href="icons/apple-splash-2732-2048.jpg" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-	
-	<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
-	<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
-	
-	<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)"
+      href="icons/apple-launch-1170x2532.png"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)"
+      href="icons/apple-launch-1284x2778.png"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)"
+      href="icons/apple-launch-1179x2556.png"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)"
+      href="icons/apple-launch-1290x2796.png"
+    />
 
-	<link rel="stylesheet" href="historique.css">
-    
-	
+    <link
+      rel="apple-touch-startup-image"
+      href="icons/apple-splash-1206-2622.jpg"
+      media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="icons/apple-splash-1290-2796.jpg"
+      media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="icons/apple-splash-1320-2868.jpg"
+      media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="icons/apple-splash-1488-2266.jpg"
+      media="(device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="icons/apple-splash-1668-2388.jpg"
+      media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="icons/apple-splash-2048-2732.jpg"
+      media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="icons/apple-splash-2868-1320.jpg"
+      media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    />
+    <link
+      rel="apple-touch-startup-image"
+      href="icons/apple-splash-2732-2048.jpg"
+      media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"
+    />
+
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+    <link rel="stylesheet" href="historique.css" />
+
     <style>
-        /* Styles structurels critiques pour éviter le flash blanc */
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; background-color: #f7fafc;
-            font-family: -apple-system, system-ui, sans-serif;
-        }
+      /* Styles structurels critiques pour éviter le flash blanc */
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #f7fafc;
+        font-family: -apple-system, system-ui, sans-serif;
+      }
 
-        #app-container {
-            display: flex; flex-direction: column;
-            height: 100vh; width: 100vw;
-        }
+      #app-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        width: 100vw;
+      }
 
-        .app-view {
-            flex: 1; position: relative;
-            display: none; overflow: hidden;
-        }
+      .app-view {
+        flex: 1;
+        position: relative;
+        display: none;
+        overflow: hidden;
+      }
 
-        .app-view.active { display: block; }
+      .app-view.active {
+        display: block;
+      }
 
-        /* Recherche Flottante */
-        #search-container {
-            position: absolute; top: 15px; left: 15px; right: 15px;
-            z-index: 10010;
-        }
+      /* Recherche Flottante */
+      #search-container {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        right: 15px;
+        z-index: 10010;
+      }
 
-        #mobile-search {
-            width: 100%; padding: 14px 20px;
-            border-radius: 30px; border: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            font-size: 16px; outline: none;
-        }
+      #mobile-search {
+        width: 100%;
+        padding: 14px 20px;
+        border-radius: 30px;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        font-size: 16px;
+        outline: none;
+      }
 
-        /* Tab Bar Mobile */
-        .tab-bar {
-            height: 75px; background: #2d3748;
-            display: flex; justify-content: space-around; align-items: center;
-            padding-bottom: env(safe-area-inset-bottom);
-            z-index: 10002;
-        }
+      /* Tab Bar Mobile */
+      .tab-bar {
+        height: 75px;
+        background: #2d3748;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        padding-bottom: env(safe-area-inset-bottom);
+        z-index: 10002;
+      }
 
-        .tab-item {
-            color: #a0aec0; text-align: center; flex: 1;
-            font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
-        }
+      .tab-item {
+        color: #a0aec0;
+        text-align: center;
+        flex: 1;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
 
-        .tab-item.active { color: white; font-weight: bold; }
+      .tab-item.active {
+        color: white;
+        font-weight: bold;
+      }
 
-        .tab-icon { font-size: 24px; display: block; margin-bottom: 2px; }
+      .tab-icon {
+        font-size: 24px;
+        display: block;
+        margin-bottom: 2px;
+      }
 
-        /* Overlay & Bottom Sheet */
-        #sheet-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); display: none; z-index: 10000;
-        }
+      /* Overlay & Bottom Sheet */
+      #sheet-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        z-index: 10000;
+      }
 
-        #bottom-sheet {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: white; z-index: 10001;
-            border-radius: 25px 25px 0 0;
-            box-shadow: 0 -5px 25px rgba(0,0,0,0.2);
-            transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
-            padding: 20px; box-sizing: border-box;
-        }
+      #bottom-sheet {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: white;
+        z-index: 10001;
+        border-radius: 25px 25px 0 0;
+        box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+        padding: 20px;
+        box-sizing: border-box;
+      }
 
-        .sheet-hidden { transform: translateY(100%); }
-        
-        .sheet-handle {
-            width: 40px; height: 5px; background: #cbd5e0;
-            border-radius: 10px; margin: -10px auto 20px auto;
-        }
+      .sheet-hidden {
+        transform: translateY(100%);
+      }
+
+      .sheet-handle {
+        width: 40px;
+        height: 5px;
+        background: #cbd5e0;
+        border-radius: 10px;
+        margin: -10px auto 20px auto;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <div id="app-container">
-        <div id="search-container">
-            <input type="text" id="mobile-search" placeholder="🔍 Rechercher un ancêtre...">
-            <div id="search-results"></div>
-			<!-- <button id="btn-reset-filter" style="display:none; margin-top:5px; background:var(--secondary); color:white; border:none; padding:4px; border-radius:4px; cursor:pointer;">❌ Effacer le filtre de lignée</button> -->
-			<button id="btn-reset-filter">❌ Effacer le filtre de lignée</button>
+      <div id="search-container">
+        <input
+          type="text"
+          id="mobile-search"
+          placeholder="🔍 Rechercher un ancêtre..."
+        />
+        <div id="search-results"></div>
+        <!-- <button id="btn-reset-filter" style="display:none; margin-top:5px; background:var(--secondary); color:white; border:none; padding:4px; border-radius:4px; cursor:pointer;">❌ Effacer le filtre de lignée</button> -->
+        <button id="btn-reset-filter">❌ Effacer le filtre de lignée</button>
+      </div>
+
+      <section id="map-view" class="app-view active">
+        <div id="map" style="width: 100%; height: 100%"></div>
+      </section>
+
+      <section id="tree-view" class="app-view">
+        <div id="tree-viz" style="width: 100%; height: 100%"></div>
+      </section>
+
+      <section id="relation-view" class="app-view">
+        <div
+          style="padding-top: 120px; padding-left: 15px; padding-right: 15px"
+        >
+          <div
+            class="relation-card"
+            style="
+              background: white;
+              padding: 20px;
+              border-radius: 15px;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            "
+          >
+            <div style="margin-bottom: 20px">
+              <label
+                style="
+                  font-size: 11px;
+                  font-weight: bold;
+                  color: #718096;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >DÉPART (A). Utiliser le champs de recherche ci-dessus</label
+              >
+              <input
+                type="text"
+                id="rel-input-a"
+                readonly
+                style="
+                  width: 100%;
+                  padding: 12px;
+                  border: 1px solid #cbd5e0;
+                  border-radius: 8px;
+                  background: #edf2f7;
+                  color: #2d3748;
+                  font-weight: bold;
+                "
+              />
+            </div>
+
+            <div style="text-align: center; margin: 10px 0">⬇️</div>
+
+            <div style="margin-bottom: 20px; position: relative">
+              <label
+                style="
+                  font-size: 11px;
+                  font-weight: bold;
+                  color: #718096;
+                  display: block;
+                  margin-bottom: 5px;
+                "
+                >CIBLE (B)</label
+              >
+              <div style="display: flex; gap: 8px; align-items: stretch">
+                <input
+                  type="text"
+                  id="rel-input-b"
+                  placeholder="Tapez un nom ici..."
+                  autocomplete="off"
+                  style="
+                    width: 100%;
+                    padding: 12px;
+                    border: 2px solid #2b6cb0;
+                    border-radius: 8px;
+                    background: white;
+                    font-size: 16px;
+                  "
+                />
+                <button
+                  onclick="RelationModule.resetPersonB()"
+                  type="button"
+                  style="
+                    background: #edf2f7;
+                    border: 1px solid #cbd5e0;
+                    border-radius: 8px;
+                    width: 46px;
+                    height: 46px;
+                    cursor: pointer;
+                    color: #718096;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                  "
+                >
+                  <span style="font-size: 18px">✕</span>
+                </button>
+              </div>
+              <div
+                id="rel-results-b"
+                style="
+                  display: none;
+                  position: absolute;
+                  top: 100%;
+                  left: 0;
+                  right: 0;
+                  background: white;
+                  border: 1px solid #cbd5e0;
+                  z-index: 10000;
+                  max-height: 200px;
+                  overflow-y: auto;
+                  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+                "
+              ></div>
+            </div>
+
+            <button
+              onclick="RelationModule.executeSearch()"
+              style="
+                width: 100%;
+                padding: 15px;
+                background: #2b6cb0;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-weight: bold;
+                font-size: 16px;
+              "
+            >
+              CALCULER LE LIEN
+            </button>
+          </div>
+
+          <div
+            id="relation-result-zone"
+            style="
+              display: none;
+              margin-top: 20px;
+              background: white;
+              padding: 15px;
+              border-radius: 15px;
+            "
+          >
+            <div id="path-list"></div>
+          </div>
         </div>
+      </section>
 
-        <section id="map-view" class="app-view active">
-            <div id="map" style="width: 100%; height: 100%;"></div>
-        </section>
+      <section id="network-view" class="app-view">
+        <svg
+          id="network-viz"
+          style="width: 100%; height: 100%; background: #f8fafc"
+        ></svg>
+      </section>
 
-        <section id="tree-view" class="app-view">
-            <div id="tree-viz" style="width: 100%; height: 100%;"></div>
-        </section>
+      <section
+        id="info-view"
+        class="app-view"
+        style="background: #f7fafc; overflow-y: auto; padding-top: 80px"
+      >
+        <div
+          id="info-content"
+          style="max-width: 600px; margin: 0 auto; padding: 20px"
+        >
+          <div
+            id="info-empty"
+            style="text-align: center; color: #a0aec0; margin-top: 50px"
+          >
+            <span style="font-size: 50px">👤</span>
+            <p>
+              Sélectionnez une personne via la recherche pour voir ses détails.
+            </p>
+          </div>
 
-		<section id="relation-view" class="app-view">
-			<div style="padding-top: 120px; padding-left: 15px; padding-right: 15px;">
-				
-				<div class="relation-card" style="background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-					
-					<div style="margin-bottom: 20px;">
-						<label style="font-size: 11px; font-weight: bold; color: #718096; display: block; margin-bottom: 5px;">DÉPART (A). Utiliser le champs de recherche ci-dessus</label>
-						<input type="text" id="rel-input-a" readonly 
-							   style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; background: #edf2f7; color: #2d3748; font-weight: bold;">
-					</div>
+          <div id="info-card" style="display: none">
+            <div
+              style="
+                background: white;
+                border-radius: 20px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+                padding: 25px;
+              "
+            >
+              <div
+                style="
+                  text-align: center;
+                  border-bottom: 2px solid #edf2f7;
+                  padding-bottom: 20px;
+                  margin-bottom: 20px;
+                "
+              >
+                <h2
+                  id="info-name"
+                  style="margin: 0; color: #2d3748; font-size: 1.6em"
+                >
+                  NOM Prénom
+                </h2>
+                <p
+                  id="info-dates"
+                  style="
+                    margin: 5px 0;
+                    color: #2b6cb0;
+                    font-weight: bold;
+                    font-size: 1.1em;
+                  "
+                >
+                  Dates
+                </p>
+                <p
+                  id="info-place"
+                  style="margin: 0; color: #718096; font-size: 0.9em"
+                >
+                  📍 Lieu
+                </p>
+              </div>
 
-					<div style="text-align: center; margin: 10px 0;">⬇️</div>
+              <div class="info-group" style="margin-bottom: 25px">
+                <h4
+                  style="
+                    color: #a0aec0;
+                    font-size: 0.8em;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    margin-bottom: 10px;
+                  "
+                >
+                  Parents
+                </h4>
+                <div
+                  id="info-parents"
+                  style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 10px;
+                  "
+                ></div>
+              </div>
 
-					<div style="margin-bottom: 20px; position: relative;">
-						<label style="font-size: 11px; font-weight: bold; color: #718096; display: block; margin-bottom: 5px;">CIBLE (B)</label>
-						<div style="display: flex; gap: 8px; align-items: stretch;">
-							<input type="text" id="rel-input-b" placeholder="Tapez un nom ici..." autocomplete="off"
-								   style="width: 100%; padding: 12px; border: 2px solid #2b6cb0; border-radius: 8px; background: white; font-size: 16px;">
-							<button onclick="RelationModule.resetPersonB()" 
-								type="button"
-								style="background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 8px; width: 46px; height: 46px; cursor: pointer; color: #718096; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-								<span style="font-size: 18px;">✕</span>
-							</button>
-						</div>   
-						<div id="rel-results-b" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e0; z-index: 10000; max-height: 200px; overflow-y: auto; box-shadow: 0 10px 15px rgba(0,0,0,0.1);"></div>
-					</div>
-
-					<button onclick="RelationModule.executeSearch()" 
-							style="width: 100%; padding: 15px; background: #2b6cb0; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-						CALCULER LE LIEN
-					</button>
-				</div>
-
-				<div id="relation-result-zone" style="display: none; margin-top: 20px; background: white; padding: 15px; border-radius: 15px;">
-					<div id="path-list"></div>
-				</div>
-			</div>
-		</section>
-
-        <section id="network-view" class="app-view">
-            <svg id="network-viz" style="width: 100%; height: 100%; background: #f8fafc;"></svg>
-        </section>
-
-		<div id="fullscreen-selector" class="fs-overlay">
-			<div class="fs-header">
-				<input type="text" id="fs-search-input" placeholder="Tapez le nom de la cible...">
-				<button onclick="RelationModule.closeSelectorB()">Annuler</button>
-			</div>
-			<div id="fs-results" class="fs-results-list"></div>
-		</div>
-				
-        <nav class="tab-bar">
-            <div class="tab-item active" onclick="App.switchView('map')">
-                <span class="tab-icon">📍</span>CARTE
+              <div class="info-group">
+                <h4
+                  style="
+                    color: #a0aec0;
+                    font-size: 0.8em;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    margin-bottom: 10px;
+                  "
+                >
+                  Famille & Descendance
+                </h4>
+                <div id="info-family"></div>
+              </div>
             </div>
-            <div class="tab-item" onclick="App.switchView('tree')">
-                <span class="tab-icon">🌳</span>ARBRE
-            </div>
-			<div class="tab-item" onclick="App.switchView('relation')">
-                <span class="tab-icon">🔍</span>LIEN
-            </div>
-            <div class="tab-item" id="tab-network" onclick="App.switchView('network')">
-                <span class="tab-icon">🕸️</span>RÉSEAU
-            </div>
-        </nav>
+          </div>
+        </div>
+      </section>
+
+      <div id="fullscreen-selector" class="fs-overlay">
+        <div class="fs-header">
+          <input
+            type="text"
+            id="fs-search-input"
+            placeholder="Tapez le nom de la cible..."
+          />
+          <button onclick="RelationModule.closeSelectorB()">Annuler</button>
+        </div>
+        <div id="fs-results" class="fs-results-list"></div>
+      </div>
+
+      <nav class="tab-bar">
+        <div class="tab-item active" onclick="App.switchView('map')">
+          <span class="tab-icon">📍</span>CARTE
+        </div>
+        <div class="tab-item" id="tab-info" onclick="App.switchView('info')">
+          <span class="tab-icon">👤</span>INFO
+        </div>
+        <div class="tab-item" onclick="App.switchView('tree')">
+          <span class="tab-icon">🌳</span>ARBRE
+        </div>
+        <div class="tab-item" onclick="App.switchView('relation')">
+          <span class="tab-icon">🔍</span>LIEN
+        </div>
+        <div
+          class="tab-item"
+          id="tab-network"
+          onclick="App.switchView('network')"
+        >
+          <span class="tab-icon">🕸️</span>RÉSEAU
+        </div>
+      </nav>
     </div>
 
     <div id="sheet-overlay" onclick="closeBottomSheet()"></div>
-	<div id="bottom-sheet" class="sheet-hidden">
-		<div class="sheet-handle"></div>
-		
-		<div class="sheet-header">
-			<h3 id="sheet-name">Nom</h3>
-			<p id="sheet-dates">Dates</p>
-		</div>
+    <div id="bottom-sheet" class="sheet-hidden">
+      <div class="sheet-handle"></div>
 
-		<div id="sheet-info-zone" style="padding: 0 20px; color: #4a5568;">
-			</div>
+      <div class="sheet-header">
+        <h3 id="sheet-name">Nom</h3>
+        <p id="sheet-dates">Dates</p>
+      </div>
 
-		<div style="padding: 20px;">
-			<button id="btn-view-tree" class="btn-primary" onclick="App.viewTreeFromSelected()" style="width:100%; padding:15px; background-color: #2b6cb0; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-				Voir sa descendance
-			</button>
-		</div>
+      <div id="sheet-info-zone" style="padding: 0 20px; color: #4a5568"></div>
 
-		<button class="btn-close" onclick="closeBottomSheet()">Fermer</button>
-	</div>
-	
+      <div style="padding: 20px">
+        <button
+          id="btn-view-tree"
+          class="btn-primary"
+          onclick="App.viewTreeFromSelected()"
+          style="
+            width: 100%;
+            padding: 15px;
+            background-color: #2b6cb0;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+          "
+        >
+          Voir sa descendance
+        </button>
+      </div>
+
+      <button class="btn-close" onclick="closeBottomSheet()">Fermer</button>
+    </div>
+
     <div id="toast">Message</div>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    
+
     <script src="map-modules.js"></script>
     <script src="tree-modules.js"></script>
     <script src="relation-modules.js"></script>
@@ -230,10 +569,10 @@
     <script src="app.js"></script>
 
     <script>
-        // Activation du mode hors-ligne
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
-        }
+      // Activation du mode hors-ligne
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js");
+      }
     </script>
-</body>
+  </body>
 </html>

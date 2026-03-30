@@ -96,6 +96,7 @@ window.SearchModule = {
                     window.RelationModule.prepareView(person);
                     window.TreeModule.render(person);
                     window.NetworkModule.render(person);
+                    App.renderInfoView();
                     // Si on n'est pas sur la carte, on y va
                     //if (App.currentView !== 'map') {
                     //    App.switchView('map');

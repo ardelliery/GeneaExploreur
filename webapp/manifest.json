@@ -1,12 +1,18 @@
 {
   "short_name": "Généalogie v4",
-  "name": "Explorateur Généalogique Mobile v4.0.3",
+  "name": "Explorateur Généalogique Mobile v4.1.0",
   "icons": [
     {
       "src": "logo.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "logo_512.png",
