@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="fr">
   <head>
@@ -488,6 +489,39 @@
         </div>
       </section>
 
+      <section id="sankey-view" class="app-view">
+        <div class="sankey-full-page">
+          <div class="sankey-card-header">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <h3 style="margin: 0; font-size: 1.1em; color: #2d3748;">🌊 Flux des Ancêtres</h3>
+              <select id="sankey-mode" onchange="SankeyModule.updateMode(this.value)" class="sankey-select">
+                <option value="geo">📍 Par Lieu</option>
+                <option value="name">🏷️ Par Nom</option>
+              </select>
+
+              <div class="sankey-controls-wrapper">
+                <div class="sankey-mini-slider">
+                    <span id="sankey-gen-val">3 générations</span>
+                    <input type="range" id="sankey-gen-slider" min="2" max="10" value="3" step="1"
+                        oninput="SankeyModule.updateGenerations(this.value)">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="sankey-viz-container">
+            <div id="sankey-viz"></div>
+            <div id="sankey-legend"></div>
+          </div>
+
+          <div id="sankey-empty" style="display: none; text-align: center; margin-top: 50px; color: #a0aec0;">
+            <span style="font-size: 40px;">📉</span>
+            <p>Sélectionnez un ancêtre pour voir son flux.</p>
+          </div>
+        </div>
+      </section>
+
+
       <div id="fullscreen-selector" class="fs-overlay">
         <div class="fs-header">
           <input
@@ -520,6 +554,9 @@
         >
           <span class="tab-icon">🕸️</span>RÉSEAU
         </div>
+        <div class="tab-item" onclick="App.switchView('sankey')">
+          <span class="tab-icon">🌊</span>FLUX
+         </div>
       </nav>
     </div>
 
@@ -560,12 +597,13 @@
     <div id="toast">Message</div>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
-
+    <script src="https://unpkg.com/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
     <script src="map-modules.js"></script>
     <script src="tree-modules.js"></script>
     <script src="relation-modules.js"></script>
     <script src="network-modules.js"></script>
     <script src="search-modules.js"></script>
+    <script src="sankey-modules.js"></script>
     <script src="app.js"></script>
 
     <script>

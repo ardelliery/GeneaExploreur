@@ -1,24 +1,25 @@
+
 /**
- * APP.JS - Chef d'orchestre de la PWA Généalogie
+ * APP.JS - Chef d'orchestre de la PWA GÃ©nÃ©alogie
  */
 
 window.App = {
   fullData: null, // Objet complet {nodes, links}
   nodes: [], // Liste simple des personnes
-  currentPerson: null, // Personne actuellement sélectionnée
+  currentPerson: null, // Personne actuellement sÃ©lectionnÃ©e
 
   async init() {
     console.log("Initialisation de l'application...");
 
-    // 1. Astuce de Pro : Détection de mise à jour du Service Worker
+    // 1. Astuce de Pro : DÃ©tection de mise Ã  jour du Service Worker
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        this.showToast("Mise à jour installée ! Actualisation...");
+        this.showToast("Mise Ã  jour installÃ©e ! Actualisation...");
         setTimeout(() => window.location.reload(), 1500);
       });
     }
 
-    // 2. Chargement des données JSON
+    // 2. Chargement des donnÃ©es JSON
     let response = null;
     let dataUrl = "data.json?v=" + new Date().getTime();
     try {
@@ -29,12 +30,12 @@ window.App = {
         response = await fetch(dataUrl);
         console.log("Response.ok = ", response.ok);
       }
-      console.log("Données chargées avec succès depuis", dataUrl);
+      console.log("DonnÃ©es chargÃ©es avec succÃ¨s depuis", dataUrl);
     } catch (err) {
       console.error(
-        "Erreur de chargement des données, tentative sans timestamp...",
+        "Erreur de chargement des donnÃ©es, tentative sans timestamp...",
       );
-      response = await fetch("data.json"); // Fallback immédiat
+      response = await fetch("data.json"); // Fallback immÃ©diat
     }
     const rawData = await response.json();
 
@@ -43,21 +44,20 @@ window.App = {
 
     // 3. Initialisation des modules
     MapModule.init(this.nodes);
-    TreeModule.init(this.fullData); // PAS de données ici, juste l'initialisation du SVG
+    TreeModule.init(this.fullData); // PAS de donnÃ©es ici, juste l'initialisation du SVG
     RelationModule.init();
     NetworkModule.init(this.fullData);
     SearchModule.init(this.nodes);
     SankeyModule.init();
-
-    console.log("Application prête !");
+    console.log("Application prÃªte !");
     //} catch (error) {
-    //    this.showToast("Erreur de chargement des données.");
+    //    this.showToast("Erreur de chargement des donnÃ©es.");
     //    console.error(error);
     //}
   },
 
   resetAllFilters() {
-    console.log("[App] Réinitialisation globale des filtres");
+    console.log("[App] RÃ©initialisation globale des filtres");
 
     // 1. Vider le champ de recherche (tous les champs si vous en avez plusieurs)
     const searchInputs = document.querySelectorAll("#mobile-search");
@@ -65,21 +65,21 @@ window.App = {
       input.value = "";
     });
 
-    // 2. Réinitialiser la variable de personne courante
+    // 2. RÃ©initialiser la variable de personne courante
     this.currentPerson = null;
 
-    // 3. Demander au MapModule de réafficher tout le monde
+    // 3. Demander au MapModule de rÃ©afficher tout le monde
     if (window.MapModule) {
       window.MapModule.filterByLineage(null);
     }
 
     window.NetworkModule.resetFilter();
 
-    // 4. Si vous voulez aussi vider les résultats de recherche affichés
+    // 4. Si vous voulez aussi vider les rÃ©sultats de recherche affichÃ©s
     const results = document.getElementById("search-results");
     if (results) results.style.display = "none";
 
-    this.showToast("Filtres réinitialisés");
+    this.showToast("Filtres rÃ©initialisÃ©s");
   },
 
   prepareFamilyData(data) {
@@ -115,7 +115,7 @@ window.App = {
         (n) => n.birth,
       ) || 1900;
 
-    // 2. Génération des champs d'affichage définitifs
+    // 2. GÃ©nÃ©ration des champs d'affichage dÃ©finitifs
     data.nodes.forEach((n) => {
       // Finalisation du computedBirth si toujours nul
       if (!n.computedBirth) n.computedBirth = Math.round(avgBirth);
@@ -127,11 +127,11 @@ window.App = {
         n.displayBirth = `~${Math.round(n.computedBirth)}`;
       }
 
-      // B. Formatage Décès (Ex: "†" ou "† 1995")
+      // B. Formatage DÃ©cÃ¨s (Ex: "â€ " ou "â€  1995")
       const isDead = n.deceased === 1 || (n.death_year && n.death_year > 0);
       n.displayDeath = "";
       if (isDead) {
-        n.displayDeath = "†"; // Caractère de la croix mortuaire
+        n.displayDeath = "â€ "; // CaractÃ¨re de la croix mortuaire
         if (n.death_year && n.death_year > 0) {
           n.displayDeath += ` ${n.death_year}`;
         }
@@ -162,10 +162,10 @@ window.App = {
     document.getElementById("info-name").innerText =
       `${person.surname.toUpperCase()} ${person.firstname}`;
     document.getElementById("info-dates").innerText =
-      `${person.displayBirth || ""} — ${person.displayDeath || ""}`;
+      `${person.displayBirth || ""} â€” ${person.displayDeath || ""}`;
     document.getElementById("info-place").innerText = person.place
-      ? `📍 ${person.place}`
-      : "📍 Lieu inconnu";
+      ? `ðŸ“ ${person.place}`
+      : "ðŸ“ Lieu inconnu";
 
     // 1. Gestion des Parents
     const parentsContainer = document.getElementById("info-parents");
@@ -180,7 +180,7 @@ window.App = {
         const div = document.createElement("div");
         div.style =
           "background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; cursor: pointer; text-align:center;";
-        div.innerHTML = `<div style="font-size:0.7em; color:#718096;">${p.sex === "F" ? "MÈRE" : "PÈRE"}</div><div style="font-weight:bold; font-size:0.9em;">${p.surname.toUpperCase()} ${p.firstname}</div>`;
+        div.innerHTML = `<div style="font-size:0.7em; color:#718096;">${p.sex === "F" ? "MÃˆRE" : "PÃˆRE"}</div><div style="font-weight:bold; font-size:0.9em;">${p.surname.toUpperCase()} ${p.firstname}</div>`;
         div.onclick = () => {
           this.currentPerson = p;
           this.renderInfoView();
@@ -193,7 +193,7 @@ window.App = {
     const familyContainer = document.getElementById("info-family");
     familyContainer.innerHTML = "";
 
-    // On cherche les conjoints via les liens "parent" partagés
+    // On cherche les conjoints via les liens "parent" partagÃ©s
     const partnerIds = new Set();
     this.fullData.links
       .filter((l) => l.source === person.id && l.type === "parent")
@@ -210,14 +210,14 @@ window.App = {
 
     if (partnerIds.size === 0) {
       familyContainer.innerHTML =
-        '<p style="color:#cbd5e0; font-style:italic; font-size:0.9em;">Aucun conjoint ou enfant détecté.</p>';
+        '<p style="color:#cbd5e0; font-style:italic; font-size:0.9em;">Aucun conjoint ou enfant dÃ©tectÃ©.</p>';
     } else {
       partnerIds.forEach((pId) => {
         const partner = this.nodes.find((n) => n.id === pId);
         const unionDiv = document.createElement("div");
         unionDiv.style =
           "margin-bottom: 20px; padding: 10px; border-left: 3px solid #edf2f7;";
-        unionDiv.innerHTML = `<div style="font-weight:bold; color:#4a5568; margin-bottom:10px;">× avec ${partner ? partner.firstname + " " + partner.surname : "Inconnu"}</div>`;
+        unionDiv.innerHTML = `<div style="font-weight:bold; color:#4a5568; margin-bottom:10px;">Ã— avec ${partner ? partner.firstname + " " + partner.surname : "Inconnu"}</div>`;
 
         // Enfants communs
         const children = this.nodes.filter((c) => {
@@ -234,7 +234,7 @@ window.App = {
           const cDiv = document.createElement("div");
           cDiv.style =
             "padding: 8px; background: white; border: 1px solid #f0f4f8; border-radius: 8px; margin-bottom: 5px; cursor:pointer; font-size: 0.9em;";
-          cDiv.innerHTML = `👶 ${c.firstname} <span style="color:#a0aec0; font-size:0.8em;">(${c.birth || "?"})</span>`;
+          cDiv.innerHTML = `ðŸ‘¶ ${c.firstname} <span style="color:#a0aec0; font-size:0.8em;">(${c.birth || "?"})</span>`;
           cDiv.onclick = () => {
             this.currentPerson = c;
             this.renderInfoView();
@@ -250,7 +250,7 @@ window.App = {
    * Change de vue (Carte ou Arbre)
    */
   switchView(viewName) {
-    console.log("Tentative de passage à :", viewName); // Ligne 71 (exemple)
+    console.log("Tentative de passage Ã  :", viewName); // Ligne 71 (exemple)
 
     /* document.querySelectorAll('.app-view').forEach(s => s.style.display = 'none');
 const target = document.getElementById(viewName + '-view');
@@ -268,20 +268,20 @@ if (target) {
       view.classList.remove("active");
     });
 
-    // On affiche la vue demandée
+    // On affiche la vue demandÃ©e
     const target = document.getElementById(viewName + "-view");
     if (target) {
-      console.log("[App] Élément DOM activé :", `${viewName}-view`);
+      console.log("[App] Ã‰lÃ©ment DOM activÃ© :", `${viewName}-view`);
       target.classList.add("active");
     }
 
-    // Initialisation spécifique selon la vue
+    // Initialisation spÃ©cifique selon la vue
     if (viewName === "relation") {
       console.log(
         "[App] Initialisation du module Relation pour :",
         this.currentPerson?.surname,
       );
-      // Au lieu de changer de vue, on ouvre la modale de parenté
+      // Au lieu de changer de vue, on ouvre la modale de parentÃ©
       // On utilise la personne courante, ou la racine si vide
       RelationModule.prepareView(this.currentPerson);
       return; // On ne change pas l'onglet actif
@@ -299,8 +299,8 @@ if (target) {
     }
 
     if (viewName === "network") {
-      console.log("[App] Activation du graphe de réseau");
-      // On demande au module de démarrer/redémarrer la simulation D3
+      console.log("[App] Activation du graphe de rÃ©seau");
+      // On demande au module de dÃ©marrer/redÃ©marrer la simulation D3
       // On peut lui passer la personne actuelle pour un focus automatique
       NetworkModule.render(this.currentPerson);
     }
@@ -308,7 +308,7 @@ if (target) {
     if (viewName === "info") {
       this.renderInfoView();
     }
-
+    
     if (viewName === 'sankey') {
         SankeyModule.render(this.currentPerson);
     } else if (viewName === 'info') {
@@ -317,17 +317,17 @@ if (target) {
   },
 
   /**
-   * Lance l'arbre généalogique à partir de la personne sélectionnée
+   * Lance l'arbre gÃ©nÃ©alogique Ã  partir de la personne sÃ©lectionnÃ©e
    */
   viewTreeFromSelected() {
-    //alert("App.viewTreeFromSelected() appelée pour : " + (this.currentPerson ? this.currentPerson.surname : "Aucune personne sélectionnée"));
+    //alert("App.viewTreeFromSelected() appelÃ©e pour : " + (this.currentPerson ? this.currentPerson.surname : "Aucune personne sÃ©lectionnÃ©e"));
     if (this.currentPerson) {
       closeBottomSheet();
       // 1. On change de vue d'abord
       this.switchView("tree");
 
       // 2. On attend un tout petit peu que le navigateur affiche la section
-      // pour que clientWidth ne soit pas égal à 0
+      // pour que clientWidth ne soit pas Ã©gal Ã  0
       setTimeout(() => {
         TreeModule.render(this.currentPerson, this.fullData);
       }, 100);
@@ -335,7 +335,7 @@ if (target) {
   },
 
   /**
-   * Affiche un message temporaire en bas de l'écran
+   * Affiche un message temporaire en bas de l'Ã©cran
    */
   showToast(message) {
     const toast = document.getElementById("toast");
@@ -347,7 +347,7 @@ if (target) {
   },
 };
 
-// Fermeture globale du Bottom Sheet (utilisée par les modules)
+// Fermeture globale du Bottom Sheet (utilisÃ©e par les modules)
 function closeBottomSheet() {
   const sheet = document.getElementById("bottom-sheet");
   const overlay = document.getElementById("sheet-overlay");
@@ -360,7 +360,7 @@ window.getVerticalLineageIds = function (targetId, allLinks) {
   familyIds.add(targetId);
 
   if (!allLinks || allLinks.length === 0) {
-    console.error("Aucun lien (links) trouvé pour calculer la lignée.");
+    console.error("Aucun lien (links) trouvÃ© pour calculer la lignÃ©e.");
     return familyIds;
   }
 
@@ -391,7 +391,7 @@ window.getVerticalLineageIds = function (targetId, allLinks) {
   collectAncestors(targetId);
   collectDescendants(targetId);
 
-  console.log(`Lignée trouvée : ${familyIds.size} personnes`);
+  console.log(`LignÃ©e trouvÃ©e : ${familyIds.size} personnes`);
   return familyIds;
 };
 
@@ -401,14 +401,14 @@ window.onload = () => App.init();
 let deferredPrompt;
 
 window.addEventListener("beforeinstallprompt", (e) => {
-  // Empêche Chrome d'afficher sa propre bannière
+  // EmpÃªche Chrome d'afficher sa propre banniÃ¨re
   e.preventDefault();
-  // Garde l'événement pour l'utiliser plus tard
+  // Garde l'Ã©vÃ©nement pour l'utiliser plus tard
   deferredPrompt = e;
 
-  // ICI : Fais apparaître un bouton "Installer" dans ton interface
+  // ICI : Fais apparaÃ®tre un bouton "Installer" dans ton interface
   const installBtn = document.createElement("button");
-  installBtn.innerText = "📲 Installer l'application";
+  installBtn.innerText = "ðŸ“² Installer l'application";
   installBtn.style.position = "fixed";
   installBtn.style.bottom = "20px";
   installBtn.style.left = "20px";
@@ -420,7 +420,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === "accepted") {
-        console.log("L'utilisateur a installé l'appli");
+        console.log("L'utilisateur a installÃ© l'appli");
       }
       deferredPrompt = null;
       installBtn.remove();

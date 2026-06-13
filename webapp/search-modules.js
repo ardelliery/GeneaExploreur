@@ -86,33 +86,55 @@ window.SearchModule = {
                 const lineageIds = window.getVerticalLineageIds(person.id, links);
                 console.log("[Search] Lignée calculée (IDs) :", lineageIds);
 
-                // 3. Application au MapModule
-                //if (window.MapModule) {
-                    console.log("[Search] Envoi des IDs au MapModule...");
-                    
-                    // On définit la personne courante
+                console.log("[Search] Envoi des IDs au MapModule...");
+                
+                // On définit la personne courante
+                try {
                     App.currentPerson = person;
+                } catch (error) {
+                    console.error("[Search] Erreur lors de la définition de la personne courante :", error);
+                }
 
-                    window.RelationModule.prepareView(person);
-                    window.TreeModule.render(person);
-                    window.NetworkModule.render(person);
-                    App.renderInfoView();
-                    // Si on n'est pas sur la carte, on y va
-                    //if (App.currentView !== 'map') {
-                    //    App.switchView('map');
-                    //}
+                console.log("[Search] Rafraîchissement des modules");
 
-                    // On lance le filtrage
-                    window.MapModule.filterByLineage(lineageIds);
-                    
-                    // On centre et on ouvre
-                    if (person.lat && person.lon) {
-                        window.MapModule.map.setView([person.lat, person.lon], 12);
-                    }
-                    //window.MapModule.openDetails(person);
-                //} else {
-                  //  console.error("[Search] MapModule est introuvable au moment du clic !");
+                window.RelationModule.prepareView(person);
+                window.TreeModule.render(person);
+                window.NetworkModule.render(person);
+                window.SankeyModule.render(person);
+    
+                App.renderInfoView();
+                // Si on n'est pas sur la carte, on y va
+                //if (App.currentView !== 'map') {
+                //    App.switchView('map');
                 //}
+
+                // On lance le filtrage
+                window.MapModule.filterByLineage(lineageIds);
+                
+                // On centre et on ouvre
+                if (person.lat && person.lon) {
+                    window.MapModule.map.setView([person.lat, person.lon], 12);
+                }
+                console.log("[Search] avant Rafraîchissement du Sankey post-affichage globale");
+                setTimeout(() => {
+                    if (window.SankeyModule) {
+                        console.log("[Search] Rafraîchissement du Sankey post-affichage globale");
+                        
+                        // Sécurité : Si l'application a recréé les boutons, on remet le slider à la bonne valeur
+                        const slider = document.getElementById('sankey-gen-slider');
+                        if (slider) {
+                            slider.value = window.SankeyModule.maxGenerations;
+                        }
+                        const valBadge = document.getElementById('sankey-gen-val');
+                        if (valBadge) {
+                            const plural = window.SankeyModule.maxGenerations > 1 ? 's' : '';
+                            valBadge.textContent = `${window.SankeyModule.maxGenerations} génération${plural}`;
+                        }
+
+                        // On dessine enfin le Sankey
+                        window.SankeyModule.render(person);
+                    }
+                }, 50);
 
                 container.style.display = 'none';
             };

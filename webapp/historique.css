@@ -1,4 +1,5 @@
-/* --- VARIABLES DE THÈME --- */
+
+/* --- VARIABLES DE THÃˆME --- */
 /* --- ADAPTATION POUR ORDINATEUR --- */
 
 
@@ -22,7 +23,7 @@ body, html {
     padding: 0;
     width: 100%;
     height: 100%;
-    overflow: hidden; /* Empêche le scroll élastique du navigateur */
+    overflow: hidden; /* EmpÃªche le scroll Ã©lastique du navigateur */
     background-color: #f7fafc;
     color: var(--text-main);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
@@ -55,7 +56,7 @@ body, html {
     left: 10px;
     right: 10px;
     background: white;
-    z-index: 2000; /* Doit être au-dessus de Leaflet */
+    z-index: 2000; /* Doit Ãªtre au-dessus de Leaflet */
     max-height: 300px;
     overflow-y: auto;
     border-radius: 8px;
@@ -72,7 +73,7 @@ body, html {
 .search-item:last-child { border-bottom: none; }
 .search-item:active { background-color: #f7fafc; }
 
-/* --- BOTTOM SHEET (DÉTAILS) --- */
+/* --- BOTTOM SHEET (DÃ‰TAILS) --- */
 #bottom-sheet {
     position: fixed;
     bottom: 0;
@@ -85,11 +86,11 @@ body, html {
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
     
-    /* Animation de montée */
+    /* Animation de montÃ©e */
     transition: transform 0.3s ease-out;
     
     /* LIMITATION DE HAUTEUR */
-    max-height: 85vh; /* Ne dépasse jamais 80% de la hauteur de l'écran */
+    max-height: 85vh; /* Ne dÃ©passe jamais 80% de la hauteur de l'Ã©cran */
     display: flex;
     flex-direction: column;
 }
@@ -101,13 +102,13 @@ body, html {
 
 /* --- ZONE DE CONTENU SCROLLABLE --- */
 .sheet-content {
-    overflow-y: auto; /* Active le défilement si le texte est trop long */
-    padding-right: 10px; /* Petit espace pour ne pas coller à la barre de scroll */
+    overflow-y: auto; /* Active le dÃ©filement si le texte est trop long */
+    padding-right: 10px; /* Petit espace pour ne pas coller Ã  la barre de scroll */
     margin-top: 15px;
     flex-grow: 1; /* Prend l'espace disponible */
 }
 
-/* Adaptation spécifique pour PC (plus propre sur grand écran) */
+/* Adaptation spÃ©cifique pour PC (plus propre sur grand Ã©cran) */
 /* --- ADAPTATION POUR ORDINATEUR (Correction du centrage et de l'affichage) --- */
 @media (min-width: 768px) {
     .search-container {
@@ -124,7 +125,7 @@ body, html {
         right: auto !important;
         width: 450px;
         max-height: 70vh;
-        /* Un seul transform pour tout gérer : centrage horizontal et vertical */
+        /* Un seul transform pour tout gÃ©rer : centrage horizontal et vertical */
         transform: translate(-50%, -50%) scale(1) !important;
         border-radius: 15px;
         border: 1px solid #e2e8f0;
@@ -163,12 +164,12 @@ body, html {
     display: block !important;
     margin: 0 !important;
     font-family: 'Inter', -apple-system, sans-serif !important;
-    font-size: 1.15rem !important; /* Taille équilibrée : ni trop gros, ni trop petit */
+    font-size: 1.15rem !important; /* Taille Ã©quilibrÃ©e : ni trop gros, ni trop petit */
     font-weight: 700 !important;
-    color: #1e293b !important; /* Gris ardoise très sombre */
+    color: #1e293b !important; /* Gris ardoise trÃ¨s sombre */
     letter-spacing: -0.02em !important;
     line-height: 1.2 !important;
-    text-transform: capitalize; /* Propre pour les prénoms */
+    text-transform: capitalize; /* Propre pour les prÃ©noms */
 }
 
 #sheet-dates {
@@ -176,7 +177,7 @@ body, html {
     margin: 0 !important;
     font-size: 0.85rem !important;
     font-weight: 500 !important;
-    color: #64748b !important; /* Gris bleuté pour le côté "muted" */
+    color: #64748b !important; /* Gris bleutÃ© pour le cÃ´tÃ© "muted" */
     letter-spacing: 0.01em !important;
 }
 
@@ -232,21 +233,21 @@ body, html {
 
 #tree-view.active {
     display: block !important;
-    background-color: #f7fafc !important; /* Gris très clair pour voir le contraste */
+    background-color: #f7fafc !important; /* Gris trÃ¨s clair pour voir le contraste */
     z-index: 100;
 }
 
 #tree-viz {
     width: 100%;
     height: 100%;
-    background: white; /* Fond blanc pour bien voir les nœuds */
+    background: white; /* Fond blanc pour bien voir les nÅ“uds */
 }
 
 .person-node rect {
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));
 }
 
-//* Styles du texte (pour assurer la lisibilité sur blanc) */
+//* Styles du texte (pour assurer la lisibilitÃ© sur blanc) */
 .tree-firstname {
     font-size: 11px;
     font-weight: 600;
@@ -264,27 +265,27 @@ body, html {
     fill: #718096;
 }
 
-/* Style spécifique quand le nœud est au centre (bleu) */
+/* Style spÃ©cifique quand le nÅ“ud est au centre (bleu) */
 .node-anc .tree-firstname, .node-des .tree-firstname {
     /* Vous pouvez cibler par parent si besoin */
 }
 
-/* Style de base pour toutes les boîtes */
+/* Style de base pour toutes les boÃ®tes */
 .tree-rect {
     fill: white;            /* Fond blanc pour tout le monde */
     stroke: #2b6cb0;        /* Bleu standard */
     stroke-width: 1px;
 }
 
-/* Style spécifique pour la boîte sélectionnée */
+/* Style spÃ©cifique pour la boÃ®te sÃ©lectionnÃ©e */
 .tree-rect.is-center {
-    stroke-width: 4px;      /* Contour nettement plus épais */
-    stroke: #2b6cb0;        /* Même couleur ou un bleu plus foncé */
+    stroke-width: 4px;      /* Contour nettement plus Ã©pais */
+    stroke: #2b6cb0;        /* MÃªme couleur ou un bleu plus foncÃ© */
 }
 
-/* Optionnel : un petit effet au survol pour plus d'interactivité */
+/* Optionnel : un petit effet au survol pour plus d'interactivitÃ© */
 .tree-rect:hover {
-    fill: #f7fafc;          /* Très léger gris au survol */
+    fill: #f7fafc;          /* TrÃ¨s lÃ©ger gris au survol */
     cursor: pointer;
 }
 
@@ -302,7 +303,7 @@ body, html {
     fill: #3182ce;
 }
 .node text {
-    pointer-events: none; /* Évite de bloquer le clic sur le rectangle */
+    pointer-events: none; /* Ã‰vite de bloquer le clic sur le rectangle */
 }
 
 
@@ -318,7 +319,7 @@ body, html {
 }
 
 .app-view.active {
-    display: block; /* Affiché quand actif */
+    display: block; /* AffichÃ© quand actif */
 	z-index: 1000 !important; /* Pour passer au-dessus de Leaflet */
 }
 
@@ -352,7 +353,7 @@ body, html {
 
 /* Assurez-vous que les liens ne sont pas transparents */
 .ancestor-link, .descendant-link {
-    stroke: #4a5568 !important; /* Gris foncé */
+    stroke: #4a5568 !important; /* Gris foncÃ© */
     stroke-width: 2px;
     fill: none;
 }
@@ -392,7 +393,7 @@ body, html {
 
 .btn-action-round:disabled { background: #cbd5e0; box-shadow: none; }
 
-/* LE SÉLECTEUR PLEIN ÉCRAN */
+/* LE SÃ‰LECTEUR PLEIN Ã‰CRAN */
 .fs-overlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -508,8 +509,8 @@ body, html {
 
 #path-list {
 	max-height: 400px;         /* Ajuste la hauteur selon tes besoins */
-    overflow-y: auto;          /* Active l'ascenseur vertical si ça dépasse */
-    padding-right: 5px;        /* Petit espace pour ne pas coller à la barre */
+    overflow-y: auto;          /* Active l'ascenseur vertical si Ã§a dÃ©passe */
+    padding-right: 5px;        /* Petit espace pour ne pas coller Ã  la barre */
 
 	scrollbar-width: thin;     /* Pour Firefox */
 }
@@ -517,7 +518,7 @@ body, html {
 #sheet-overlay {
     user-select: none;
     -webkit-user-select: none;
-    touch-action: pan-y; /* Permet le scroll vertical mais on gère l'horizontal en JS */
+    touch-action: pan-y; /* Permet le scroll vertical mais on gÃ¨re l'horizontal en JS */
 }
 
 .map-marker-dot {
@@ -531,9 +532,9 @@ body, html {
 
 
 
-/* 2. Le bouton de reset lui-même */
+/* 2. Le bouton de reset lui-mÃªme */
 #btn-reset-filter {
-    display: none; /* Caché par défaut, activé par le JS */
+    display: none; /* CachÃ© par dÃ©faut, activÃ© par le JS */
     /* width: 100%; */
     margin-top: 8px;
     padding: 10px 15px;
@@ -541,10 +542,10 @@ body, html {
 	/* TAILLE FIXE */
     width: auto;            /* S'adapte au contenu... */
     min-width: 180px;       /* ...mais garde une taille minimum fixe */
-    max-width: 250px;       /* Empêche de devenir trop large */
+    max-width: 250px;       /* EmpÃªche de devenir trop large */
 	
     /* Couleurs et bordures */
-    background-color: #fff5f5; /* Fond rouge très léger */
+    background-color: #fff5f5; /* Fond rouge trÃ¨s lÃ©ger */
     color: #c53030;            /* Texte rouge (votre variable --secondary) */
     border: 1px solid #feb2b2;
     border-radius: 8px;
@@ -563,7 +564,7 @@ body, html {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* 3. États au survol et au clic */
+/* 3. Ã‰tats au survol et au clic */
 #btn-reset-filter:hover {
     background-color: #feb2b2;
     color: #9b2c2c;
@@ -587,7 +588,7 @@ body, html {
     }
 }
 
-/* 5. Style spécifique si vous l'utilisez sur mobile (optionnel) */
+/* 5. Style spÃ©cifique si vous l'utilisez sur mobile (optionnel) */
 @media (max-width: 768px) {
     #btn-reset-filter {
         padding: 12px;
@@ -595,11 +596,11 @@ body, html {
     }
 }
 
-/* Styles pour le graphe de réseau */
+/* Styles pour le graphe de rÃ©seau */
 .link {
     stroke-width: 2px;
     stroke-opacity: 0.6;
-    stroke-dasharray: 2,2; /* Pour un look plus "toile d'araignée" */
+    stroke-dasharray: 2,2; /* Pour un look plus "toile d'araignÃ©e" */
 }
 
 .link-marriage {
@@ -615,5 +616,110 @@ body, html {
 .node text {
     pointer-events: none;
     font-weight: 500;
-    text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff; /* Halo pour lisibilité */
+    text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff; /* Halo pour lisibilitÃ© */
+}
+
+
+/* Spécifique Sankey */
+#sankey-view {
+    background: #f7fafc;
+}
+
+/* 5. SPECIFIQUE SANKEY */
+.sankey-full-page {
+    padding: 80px 15px 40px 15px;
+    max-width: 100%; /* Suppression de la limite des 600px */
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sankey-card-header {
+    background: white;
+    padding: 15px;
+    border-radius: 15px 15px 0 0;
+    border-bottom: 1px solid #edf2f7;
+}
+
+#sankey-viz-container {
+    background: white;
+    padding: 15px;
+    border-radius: 0 0 15px 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    min-height: 400px;
+}
+
+.sankey-select {
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.85em;
+    background: #f8fafc;
+}
+
+#sankey-viz {
+    flex: 1; /* Le graphique D3 prend 100% de l'espace interne du conteneur blanc */
+    width: 100%;
+    min-height: 0;
+    position: relative;
+}
+
+#sankey-viz svg {
+  overflow: visible; /* Pour voir les noms à droite */
+}
+
+#sankey-legend {
+    margin-top: 15px;
+    padding: 0 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    flex-shrink: 0;
+    
+    /* Sécurité mobile : si la légende est immense, on peut scroller dedans */
+    max-height: 95px; 
+    overflow-y: auto; 
+}
+
+/* ===== CONTROLES DU DIAGRAMME SANKEY ===== */
+
+/* Conteneur pour aligner proprement le choix de mode et le slider */
+.sankey-controls-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap; /* Si l'écran mobile est trop étroit, le slider passe en dessous proprement */
+    margin-top: 10px;
+}
+
+/* Bulle du mini-slider */
+.sankey-mini-slider {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #f8fafc;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid #edf2f7;
+    vertical-align: middle;
+    flex-shrink: 0; /* Empêche le navigateur de ratatiner le slider */
+}
+
+/* Texte dynamique (ex: 3 générations) */
+#sankey-gen-val {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4a5568;
+    white-space: nowrap; /* Évite que le texte ne se coupe en deux */
+}
+
+/* La barre et le curseur de sélection */
+#sankey-gen-slider {
+    width: 80px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: #3182ce; /* Donne une jolie couleur bleue moderne au bouton natif */
+    vertical-align: middle;
+    flex-shrink: 0;
 }
