@@ -1,6 +1,7 @@
 /**
  * SANKEY-MODULES.JS 
  * Version Haute-Précision : Matrice de couleurs bivariée (RGB Géographique)
+ * Fix : Highlighting autonome par isolation chirurgicale des classes graphiques (Anti-conflit Axe X)
  */
 
 window.SankeyModule = {
@@ -12,6 +13,7 @@ window.SankeyModule = {
     // Bornes géographiques qui seront calculées dynamiquement
     geoBounds: { minLat: Infinity, maxLat: -Infinity, minLng: Infinity, maxLng: -Infinity },
     hasGeoData: false,
+    currentHighlightValue: null,
 
     /**
      * Calcule la zone géographique de la famille et pré-génère les couleurs
@@ -25,7 +27,6 @@ window.SankeyModule = {
         let countGeo = 0;
 
         App.nodes.forEach(p => {
-            // Prise en compte des différentes dénominations possibles dans vos objets
             const lat = p.lat || p.latitude;
             const lng = p.lng || p.longitude || p.lon;
             
@@ -69,17 +70,13 @@ window.SankeyModule = {
                     const pctLat = (lat - this.geoBounds.minLat) / rangeLat;
                     const pctLng = (lng - this.geoBounds.minLng) / rangeLng;
 
-                    // FORMULE RGB BIVARIÉE (Calibrée pour rester lumineuse et éviter le sombre/noir)
-                    // Longitude (Ouest -> Est) pilote le ROUGE (de 60 à 255)
+                    // FORMULE RGB BIVARIÉE
                     const R = Math.round(60 + pctLng * 195);
-                    // Latitude (Sud -> Nord) pilote le BLEU (de 60 à 255)
                     const B = Math.round(60 + pctLat * 195);
-                    // Le VERT sert de liant pour illuminer le graphique et mélanger les deux axes
                     const G = Math.round(140 + ((pctLat + pctLng) / 2) * 60);
 
                     this.colorCache.locations[loc] = `rgb(${R}, ${G}, ${B})`;
                 } else {
-                    // Si la ville n'a pas de coordonnées GPS, on se replie proprement sur le hachage textuel
                     this.colorCache.locations[loc] = this.generateTextHashColor(loc, 60, 55);
                 }
             }
@@ -126,8 +123,10 @@ window.SankeyModule = {
 
             if (!nodeMap.has(id)) {
                 nodeMap.set(id, nodes.length);
+                
+                // Injection de TOUTES les données de p (provenant d'app.js) dans le nœud D3
                 nodes.push({
-                    id: id,
+                    ...p, 
                     name: `${p.firstname} ${p.surname.charAt(0)}.`,
                     year: p.birth || p.computedBirth || 1900,
                     color: this.getPersonColor(p)
@@ -151,9 +150,12 @@ window.SankeyModule = {
         traverse(targetId, 0);
         return { nodes, links };
     },
-
+    
     render(targetPerson) {
         console.log("{Sankey} Rendu du Sankey pour :", targetPerson ? `${targetPerson.firstname} ${targetPerson.surname}` : "Aucune personne cible");
+        
+        this.currentHighlightValue = null; // Reset de la sélection courante au re-rendu
+
         const container = document.getElementById('sankey-viz');
         const emptyMsg = document.getElementById('sankey-empty');
         const vizBox = document.getElementById('sankey-viz-container');
@@ -212,12 +214,13 @@ window.SankeyModule = {
             .style("color", "#718096")
             .selectAll("text").style("font-size", "11px");
 
-        // Liens
+        // Liens (Rubans) -> AJOUT DE LA CLASSE sankey-link
         svg.append("g")
             .attr("fill", "none")
             .selectAll("path")
             .data(links)
             .join("path")
+            .attr("class", "sankey-link")
             .attr("d", d3.sankeyLinkHorizontal())
             .attr("stroke", d => d.source.color)
             .attr("stroke-width", d => Math.max(4, d.width)) 
@@ -229,7 +232,9 @@ window.SankeyModule = {
             .data(nodes)
             .join("g");
 
+        // Rectangles -> AJOUT DE LA CLASSE sankey-rect
         node.append("rect")
+            .attr("class", "sankey-rect")
             .attr("x", d => d.x0)
             .attr("y", d => d.y0)
             .attr("height", d => Math.max(6, d.y1 - d.y0)) 
@@ -237,7 +242,9 @@ window.SankeyModule = {
             .attr("fill", d => d.color)
             .attr("rx", 3);
 
+        // Textes -> AJOUT DE LA CLASSE sankey-text
         node.append("text")
+            .attr("class", "sankey-text")
             .attr("x", d => d.x1 + 6)
             .attr("y", d => (d.y1 + d.y0) / 2)
             .attr("dy", "0.35em")
@@ -251,27 +258,20 @@ window.SankeyModule = {
     },
 
     /**
-     * Change le nombre de générations et rafraîchit le graphique
-     * à partir du slider situé à côté du choix Mode
+     * Slider générations
      */
     updateGenerations(newGen) {
         this.maxGenerations = parseInt(newGen, 10); 
-        
-        // On met à jour le texte à côté du curseur
         const valBadge = document.getElementById('sankey-gen-val');
         if (valBadge) {
             const plural = this.maxGenerations > 1 ? 's' : '';
             valBadge.textContent = `${this.maxGenerations} génération${plural}`;
         }
-        
-        // On redessine le Sankey sur ton conteneur d'origine
-        if (App.currentPerson) {
-            this.render(App.currentPerson);
-        }
+        if (App.currentPerson) this.render(App.currentPerson);
     },
 
     /**
-     * Légende exhaustive
+     * Génération de la légende cliquable
      */
     updateLegend(nodes) {
         const legendContainer = document.getElementById('sankey-legend');
@@ -280,12 +280,9 @@ window.SankeyModule = {
 
         const stats = {};
         nodes.forEach(n => {
-            const person = App.nodes.find(p => p.id === n.id);
-            if (!person) return;
-            
             const label = (this.mode === 'name') ? 
-                (person.surname || "INCONNU").toUpperCase() : 
-                (person.place || "Lieu Inconnu");
+                (n.surname || "Inconnu").toUpperCase() : 
+                (n.place || "Lieu Inconnu");
                 
             if (!stats[label]) {
                 stats[label] = { count: 0, color: n.color };
@@ -297,12 +294,126 @@ window.SankeyModule = {
             .sort((a, b) => b[1].count - a[1].count)
             .forEach(([label, data]) => {
                 const badge = document.createElement('div');
-                badge.style = "display:flex; align-items:center; gap:6px; background:#f8fafc; padding:4px 10px; border-radius:12px; font-size:11px; border:1px solid #edf2f7; color:#4a5568; white-space:nowrap;";
+                badge.classList.add('legend-item');
+                badge.setAttribute('data-value', label);
+                badge.style = "display:flex; align-items:center; gap:6px; background:#f8fafc; padding:4px 10px; border-radius:12px; font-size:11px; border:1px solid #edf2f7; color:#4a5568; white-space:nowrap; cursor:pointer; transition: all 0.2s;";
+                
                 badge.innerHTML = `
                     <span style="width:8px; height:8px; background:${data.color}; border-radius:50%; flex-shrink:0;"></span> 
                     <span><strong>${label}</strong> <span style="color:#a0aec0; font-size:0.9em;">(${data.count})</span></span>
                 `;
                 legendContainer.appendChild(badge);
             });
+
+        this.initLegendListener();
+    },
+
+    /**
+     * Écouteur d'événement sur la légende
+     */
+    initLegendListener() {
+        const legendContainer = document.getElementById('sankey-legend');
+        if (!legendContainer || legendContainer.dataset.listenerActive) return;
+
+        legendContainer.dataset.listenerActive = "true";
+        legendContainer.addEventListener("click", (event) => {
+            const clickedItem = event.target.closest(".legend-item");
+            if (!clickedItem) return;
+
+            const valueToHighlight = clickedItem.getAttribute('data-value');
+            this.highlightByValue(valueToHighlight);
+        });
+    },
+
+    /**
+     * Application de la mise en évidence visuelle
+     */
+    highlightByValue(value) {
+        if (!value) return;
+        const valLower = value.trim().toLowerCase();
+
+        // Système d'interrupteur (Toggle) : Un second clic réinitialise le graphique
+        if (this.currentHighlightValue === valLower) {
+            this.resetHighlight();
+            return;
+        }
+        this.currentHighlightValue = valLower;
+
+        // 1. MAJ visuelle de la légende
+        document.querySelectorAll('#sankey-legend .legend-item').forEach(badge => {
+            const badgeVal = badge.getAttribute('data-value').trim().toLowerCase();
+            if (badgeVal === valLower) {
+                badge.style.borderColor = "#e53e3e";
+                badge.style.background = "#fff5f5";
+                badge.style.opacity = "0.2";
+            } else {
+                badge.style.borderColor = "#edf2f7";
+                badge.style.background = "#f8fafc";
+                badge.style.opacity = "0.1";
+            }
+        });
+
+        // Sécurisation de la correspondance (Vérification stricte de type pour éviter les objets vides)
+        const isMatch = (d3Node) => {
+            if (!d3Node || typeof d3Node !== 'object') return false;
+            const matchName = d3Node.surname && d3Node.surname.trim().toLowerCase() === valLower;
+            const matchPlace = d3Node.place && d3Node.place.trim().toLowerCase() === valLower;
+            return !!(matchName || matchPlace);
+        };
+
+        // 2. HIGHLIGHT DES RUBANS -> Utilise la classe .sankey-link (Sécurisé)
+        d3.select("#sankey-viz").selectAll(".sankey-link")
+            .transition().duration(200)
+            .attr("stroke", d => (d.source && (isMatch(d.source) || isMatch(d.target))) ? "#e53e3e" : (d.source ? d.source.color : "#ccc"))
+            .attr("stroke-width", d => (d.source && (isMatch(d.source) || isMatch(d.target))) ? (Math.max(4, d.width) + 3) : Math.max(4, d.width))
+            .attr("stroke-opacity", d => (d.source && (isMatch(d.source) || isMatch(d.target))) ? 0.2 : 0.05);
+
+        // 3. HIGHLIGHT DES INDIVIDUS -> Utilise la classe .sankey-rect
+        d3.select("#sankey-viz").selectAll(".sankey-rect")
+            .transition().duration(200)
+            .attr("stroke", d => isMatch(d) ? "#e53e3e" : "none")
+            .attr("stroke-width", d => isMatch(d) ? "2px" : "0px")
+            .style("opacity", d => isMatch(d) ? 1 : 0.15);
+
+        // 4. HIGHLIGHT DES TEXTES -> Utilise la classe .sankey-text
+        d3.select("#sankey-viz").selectAll(".sankey-text")
+            .transition().duration(200)
+            .style("fill", d => isMatch(d) ? "#e53e3e" : "#2d3748")
+            .style("font-weight", d => isMatch(d) ? "bold" : "500")
+            .style("opacity", d => isMatch(d) ? 1 : 0.2);
+    },
+
+    /**
+     * RESTAURATION DES COULEURS ET OPACITÉS INITIALES
+     */
+    resetHighlight() {
+        this.currentHighlightValue = null;
+
+        // Remet la légende à l'état normal
+        document.querySelectorAll('#sankey-legend .legend-item').forEach(badge => {
+            badge.style.borderColor = "#edf2f7";
+            badge.style.background = "#f8fafc";
+            badge.style.opacity = "1";
+        });
+        
+        // Remet les rubans (liens) à l'état initial via .sankey-link
+        d3.select("#sankey-viz").selectAll(".sankey-link")
+            .transition().duration(200)
+            .attr("stroke", d => d.source ? d.source.color : "#ccc")
+            .attr("stroke-width", d => Math.max(4, d.width))
+            .attr("stroke-opacity", 0.6);
+
+        // Remet les nœuds rect à l'état initial via .sankey-rect
+        d3.select("#sankey-viz").selectAll(".sankey-rect")
+            .transition().duration(200)
+            .attr("stroke", "none")
+            .style("opacity", 1.0);
+
+        // Remet les textes à l'état initial via .sankey-text
+        d3.select("#sankey-viz").selectAll(".sankey-text")
+            .transition().duration(200)
+            .style("fill", "#2d3748")
+            .style("font-weight", "500")
+            .style("opacity", 1.0);
     }
 };

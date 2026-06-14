@@ -82,12 +82,18 @@ window.App = {
     this.showToast("Filtres réinitialisés");
   },
 
-  prepareFamilyData(data) {
-    // 1. Initialisation du calcul des dates (votre algo original)
+ prepareFamilyData(data) {
+    // 1. SÉCURISATION ET NETTOYAGE GLOBAL (Anti-bugs d'espaces et de casse)
     data.nodes.forEach((n) => {
+      n.surname = (n.surname || "Inconnu").trim();
+      n.firstname = (n.firstname || "Inconnu").trim();
+      n.place = (n.place || "Lieu Inconnu").trim();
+      
+      // Initialisation du calcul des dates (votre algo original)
       n.computedBirth = n.birth > 0 ? n.birth : null;
     });
 
+    // Votre algorithme original de propagation des dates
     let changed = true;
     let iterations = 0;
     while (changed && iterations < 10) {
@@ -131,7 +137,7 @@ window.App = {
       const isDead = n.deceased === 1 || (n.death_year && n.death_year > 0);
       n.displayDeath = "";
       if (isDead) {
-        n.displayDeath = "†"; // Caractère de la croix mortuaire
+        n.displayDeath = "†"; 
         if (n.death_year && n.death_year > 0) {
           n.displayDeath += ` ${n.death_year}`;
         }
