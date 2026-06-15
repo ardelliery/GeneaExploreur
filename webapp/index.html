@@ -489,38 +489,81 @@
         </div>
       </section>
 
-      <section id="sankey-view" class="app-view">
-        <div class="sankey-full-page">
-          <div class="sankey-card-header">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-              <h3 style="margin: 0; font-size: 1.1em; color: #2d3748;">🌊 Flux des Ancêtres</h3>
-              <select id="sankey-mode" onchange="SankeyModule.updateMode(this.value)" class="sankey-select">
-                <option value="geo">📍 Par Lieu</option>
-                <option value="name">🏷️ Par Nom</option>
-              </select>
+<section id="sankey-view" class="app-view">
+  <div class="sankey-full-page">
+    
+    <div class="sankey-card-header">
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <h3 style="margin: 0; font-size: 1.1em; color: #2d3748;">🌊 Flux des Ancêtres</h3>
+        
+        <select id="sankey-mode" onchange="SankeyModule.updateMode(this.value)" class="sankey-select">
+          <option value="geo">📍 Par Lieu</option>
+          <option value="name">🏷️ Par Nom</option>
+        </select>
 
-              <div class="sankey-controls-wrapper">
-                <div class="sankey-mini-slider">
-                    <span id="sankey-gen-val">3 générations</span>
-                    <input type="range" id="sankey-gen-slider" min="2" max="10" value="3" step="1"
-                        oninput="SankeyModule.updateGenerations(this.value)">
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div id="sankey-viz-container">
-            <div id="sankey-viz"></div>
-            <div id="sankey-legend"></div>
-          </div>
-
-          <div id="sankey-empty" style="display: none; text-align: center; margin-top: 50px; color: #a0aec0;">
-            <span style="font-size: 40px;">📉</span>
-            <p>Sélectionnez un ancêtre pour voir son flux.</p>
+        <div class="sankey-controls-wrapper">
+          <div class="sankey-mini-slider">
+              <span id="sankey-gen-val">3 générations</span>
+              <input type="range" id="sankey-gen-slider" min="2" max="10" value="3" step="1"
+                  oninput="SankeyModule.updateGenerations(this.value)">
           </div>
         </div>
-      </section>
+        
+        <button onclick="SankeyModule.openExportModal()" style="display:flex; align-items:center; gap:6px; background:#4a5568; color:white; padding:6px 12px; border-radius:6px; border:none; font-size:13px; cursor:pointer; font-weight:500; transition:background 0.2s;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Export PDF/Imprimer
+        </button>
+        
+        </div>
+    </div>
 
+    <div id="sankey-viz-container">
+      <div id="sankey-viz"></div>
+      <div id="sankey-legend"></div>
+    </div>
+
+    <div id="sankey-empty" style="display: none; text-align: center; margin-top: 50px; color: #a0aec0;">
+      <span style="font-size: 40px;">📉</span>
+      <p>Sélectionnez un ancêtre pour voir son flux.</p>
+    </div>
+  </div>
+
+  <div id="sankey-export-modal" class="sankey-modal-overlay">
+      <div class="sankey-modal-content">
+          <h3>Paramètres d'export Haute Résolution</h3>
+          
+          <div class="modal-field">
+              <label>Format cible du PDF :</label>
+              <select id="export-format">
+                  <option value="A4" selected>A4 (Paysage - Standard)</option>
+                  <option value="A3">A3 (Paysage - Grand)</option>
+                  <option value="A2">A2 (Paysage - Très Grand)</option>
+                  <option value="A1">A1 (Paysage - Poster/Géant)</option>
+              </select>
+          </div>
+
+          <div class="modal-field">
+              <label>Profondeur de générations : <span id="export-gen-val">6</span></label>
+              <input type="range" id="export-generations" min="3" max="20" value="6" oninput="document.getElementById('export-gen-val').textContent = this.value">
+          </div>
+
+          <div class="modal-field">
+              <label>Ajustement de la luminosité des couleurs :</label>
+              <input type="range" id="export-lightness" min="30" max="75" value="50">
+          </div>
+
+          <div class="modal-colors-section">
+              <label>Information : Les 10 couleurs dominantes actuelles</label>
+              <div id="modal-top-colors" class="swatch-container"></div>
+          </div>
+
+          <div class="modal-actions">
+              <button class="btn-cancel" onclick="SankeyModule.closeExportModal()">Annuler</button>
+              <button class="btn-confirm" onclick="SankeyModule.processHighResExport()">Calculer & Télécharger le SVG</button>
+          </div>
+      </div>
+  </div>
+</section>
 
       <div id="fullscreen-selector" class="fs-overlay">
         <div class="fs-header">
