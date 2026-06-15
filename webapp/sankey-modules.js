@@ -171,8 +171,19 @@ window.SankeyModule = {
         container.innerHTML = '';
 
         const width = container.clientWidth - this.margin.left - this.margin.right;
-        const currentHeight = container.clientHeight;
-        const height = (currentHeight > 50 ? currentHeight : 450) - this.margin.top - this.margin.bottom;
+
+        // --- FIX DE LA HAUTEUR DYNAMIQUE ---
+        let currentHeight = container.clientHeight;
+        if (currentHeight <= 50) {
+            // Si le conteneur n'a pas de hauteur CSS calculable, on prend TOUTE la hauteur d'écran restante
+            const rect = container.getBoundingClientRect();
+            const spaceLeftOnScreen = window.innerHeight - rect.top - 250; // 35px de marge de sécurité en bas de page
+            currentHeight = spaceLeftOnScreen > 300 ? spaceLeftOnScreen : 500; // Secours à 500px si l'écran est minuscule
+        }
+        const height = currentHeight - this.margin.top - this.margin.bottom;
+
+        //const currentHeight = container.clientHeight;
+        //const height = (currentHeight > 50 ? currentHeight : 450) - this.margin.top - this.margin.bottom;
 
         const svg = d3.select("#sankey-viz")
             .append("svg")
