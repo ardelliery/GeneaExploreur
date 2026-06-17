@@ -6,6 +6,7 @@
  * Fix : Duplication anti-consanguinité + stylisation en pointillés (stroke-dasharray) pour les branches dupliquées
  */
 
+
 window.SankeyModule = {
     mode: 'geo', // 'geo' ou 'name'
     colorCache: { names: {}, locations: {} },
@@ -840,6 +841,220 @@ window.SankeyModule = {
                 return `${optimalSize}px`;
             })
             .style("display", d => (d.y1 - d.y0 < 6) ? "none" : "block");
+
+        // =================================================================
+        // LÉGENDE CARTOGRAPHIQUE VIA CHARGEMENT DE VRAIS GEOJSON (HD)
+        // =================================================================
+        
+        // 1. Dimensions et positionnement du module de légende
+        const mapBoxWidth = exportWidth * 0.18;   // Légèrement plus large pour le confort visuel
+        const mapBoxHeight = exportWidth * 0.15;  
+        const mapX = exportWidth - mapBoxWidth - (exportWidth * 0.02);
+        const mapY = exportHeight - mapBoxHeight - (exportHeight * 0.07);
+
+        const mapGroup = virtualSvg.append("g")
+            .attr("id", "carto-legende")
+            .attr("transform", `translate(${mapX}, ${mapY})`);
+
+        // Cadre extérieur
+        mapGroup.append("rect")
+            .attr("width", mapBoxWidth)
+            .attr("height", mapBoxHeight)
+//            .attr("fill", "#ffffff")
+            .attr("fill", "none")
+//            .attr("stroke", "#cbd5e0")
+            .attr("stroke", "none")
+            .attr("stroke-width", "3px")
+            .attr("rx", 14);
+
+        // Titre de l'index
+        mapGroup.append("text")
+            .attr("x", mapBoxWidth / 2)
+            .attr("y", maxFontSize * 0.8)
+            .attr("text-anchor", "middle")
+            .text("Origine Géographique")
+            .style("font-family", "system-ui, sans-serif")
+            .style("font-weight", "800")
+            .style("font-size", `${maxFontSize * 0.55}px`)
+            .style("fill", "#1a202c");
+
+        // Zone d'affichage interne pour la carte (en laissant des marges pour le titre)
+        const innerMapWidth = mapBoxWidth * 0.92;
+        const innerMapHeight = mapBoxHeight - (maxFontSize * 1.4) - 20;
+        
+        const innerMapGroup = mapGroup.append("g")
+            .attr("transform", `translate(${mapBoxWidth * 0.04}, ${maxFontSize * 1.2})`);
+
+        // CHARGEMENT ET CORRÉLATION DES GEOJSON
+        // Ajustez ici les chemins d'accès réels à vos fichiers localement
+        const geojsonFranceUrl = "departements-version-simplifiee.geojson";
+        const geojsonSuisseUrl = "ch-districts.geojson";
+
+        // Comme le processus d'export d'origine attend un rendu synchrone pour le Canvas, 
+        // nous encapsulons le chargement. Idéalement, pré-chargez ces fichiers ou traitez-les en Promise.
+        Promise.all([
+            d3.json(geojsonFranceUrl),
+            d3.json(geojsonSuisseUrl)
+        ]).then(([franceData, suisseData]) => {
+            
+            // Fusion temporaire des features pour calculer le cadrage global idéal de la projection
+            const combinedFeatures = [...franceData.features, ...suisseData.features];
+            const featureCollection = { type: "FeatureCollection", features: combinedFeatures };
+
+            // Configuration de la projection Mercator calée précisément sur notre boîte SVG
+            const projection = d3.geoMercator()
+                .fitSize([innerMapWidth, innerMapHeight], featureCollection);
+
+            // Générateur de chemins D3
+            const geoPath = d3.geoPath().projection(projection);
+
+            // Dessin des départements Français
+            innerMapGroup.append("g")
+                .attr("class", "france-layers")
+                .selectAll("path")
+                .data(franceData.features)
+                .join("path")
+                .attr("d", geoPath)
+//                .attr("fill", "#f8fafc")
+                .attr("fill", "none")
+                .attr("stroke", "#cbd5e0")
+                .attr("stroke-width", "0.5px") // Très fin pour ne pas saturer le dessin
+                .attr("stroke-linejoin", "round");
+
+            // Dessin des districts Suisses (avec une teinte de fond subtilement différente pour l'identification)
+            innerMapGroup.append("g")
+                .attr("class", "suisse-layers")
+                .selectAll("path")
+                .data(suisseData.features)
+                .join("path")
+                .attr("d", geoPath)
+//                .attr("fill", "#f1f5f9")
+                .attr("fill", "none")
+                .attr("stroke", "#94a3b8")
+                .attr("stroke-width", "0.5px")
+                .attr("stroke-linejoin", "round");
+
+            // Rajout d'une ligne de frontière nationale plus épaisse pour bien démarquer la France et la Suisse
+            // D3 s'occupe de tout recalculer de manière transparente
+            innerMapGroup.append("path")
+                .datum(franceData)
+                .attr("d", geoPath)
+                .attr("fill", "none")
+                .attr("stroke", "#475569")
+                .attr("stroke-width", "2px");
+
+            innerMapGroup.append("path")
+                .datum(suisseData)
+                .attr("d", geoPath)
+                .attr("fill", "none")
+                .attr("stroke", "#334155")
+                .attr("stroke-width", "2px")
+                .attr("stroke-dasharray", "4,3");
+
+            // PLACEMENT DES PASTILLES ISSUES DU SANKEY
+            const lieuxTraites = new Set();
+
+            nodes.forEach(n => {
+                const lat = n.lat || n.latitude || n.lieu_lat || n.lieu_latitude;
+                const lng = n.lng || n.lon || n.longitude || n.lieu_lng || n.lieu_longitude;
+
+                if (lat !== undefined && lng !== undefined && lat !== null && lng !== null) {
+                    const parsedLat = parseFloat(lat);
+                    const parsedLng = parseFloat(lng);
+
+                    if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat !== 0) {
+                        const cleUniqueLieu = `${parsedLat.toFixed(4)}_${parsedLng.toFixed(4)}_${n.color}`;
+                        
+                        if (!lieuxTraites.has(cleUniqueLieu)) {
+                            lieuxTraites.add(cleUniqueLieu);
+
+                            // La projection de D3 convertit instantanément [lng, lat] terrestres en pixels [X, Y]
+                            // ATTENTION : D3 prend [Longitude, Latitude] dans cet ordre précis !
+                            const coordsPixels = projection([parsedLng, parsedLat]);
+
+                            if (coordsPixels) {
+                                const [xPx, yPx] = coordsPixels;
+
+                                // Sécurité pour s'assurer que le point projeté est bien dans les limites visibles
+                                if (xPx >= 0 && xPx <= innerMapWidth && yPx >= 0 && yPx <= innerMapHeight) {
+                                    
+                                    // Taille idéale pour l'affichage en Haute Définition
+                                    const pointRadius = Math.max(15, exportWidth * 0.002);
+
+                                    // Création de la pastille de couleur avec liseré d'isolation blanc
+                                    innerMapGroup.append("circle")
+                                        .attr("cx", xPx)
+                                        .attr("cy", yPx)
+                                        .attr("r", pointRadius)
+                                        .attr("fill", n.color)
+                                        .attr("stroke", "#ffffff") 
+                                        .attr("stroke-width", "1.5px");
+
+                                    // Contour externe sombre pour détacher la couleur
+                                    //innerMapGroup.append("circle")
+                                    //    .attr("cx", xPx)
+                                    //    .attr("cy", yPx)
+                                    //    .attr("r", pointRadius + 1)
+                                    //    .attr("fill", "none")
+                                    //    .attr("stroke", "#1e293b") 
+                                    //    .attr("stroke-width", "1px")
+                                    //    .attr("opacity", 0.95);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Déclencher la suite de la génération de l'image (Canvas -> PDF) une fois que les GeoJSON sont dessinés
+            continuePdfGeneration();
+
+        }).catch(err => {
+            console.error("Erreur lors du chargement des fichiers GeoJSON : ", err);
+            // Secours : si les fichiers échouent, on génère le PDF sans la légende pour ne pas bloquer l'utilisateur
+            continuePdfGeneration();
+        });
+
+        // Pour gérer l'asynchronisme des GeoJSON, isolez la fin de votre fonction originale dans cette sous-fonction :
+        function continuePdfGeneration() {
+            const svgString = virtualSvg.node().outerHTML;
+            const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+            const blobUrl = URL.createObjectURL(svgBlob);
+
+            const img = new Image();
+            img.src = blobUrl;
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                canvas.width = exportWidth;
+                canvas.height = exportHeight;
+                const ctx = canvas.getContext("2d");
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, exportWidth, exportHeight);
+                ctx.drawImage(img, 0, 0);
+
+                const imgData = canvas.toDataURL("image/png");
+
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: "landscape",
+                    unit: "px",
+                    format: [exportWidth, exportHeight]
+                });
+
+                pdf.addImage(imgData, "PNG", 0, 0, exportWidth, exportHeight);
+                pdf.save(`Arbre_Sankey_Topologique_${format}_${App.currentPerson.surname}.pdf`);
+
+                URL.revokeObjectURL(blobUrl);
+                // Si la fonction closeExportModal existe dans votre classe
+                if(typeof this.closeExportModal === "function") this.closeExportModal();
+            };
+        }
+        
+        return; // Stoppe l'exécution linéaire pour laisser le relais à continuePdfGeneration() après le traitement asynchrone
+
+        // =================================================================
+        // FIN DE LA LÉGENDE CARTOGRAPHIQUE
+        // =================================================================
 
         const svgString = virtualSvg.node().outerHTML;
         const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
