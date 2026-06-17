@@ -3,6 +3,7 @@
  * Version Haute-Précision : Matrice de couleurs bivariée (RGB Géographique)
  * Fix : Highlighting autonome par isolation chirurgicale des classes graphiques (Anti-conflit Axe X)
  * Fix : Aperçu et application universelle de la luminosité via d3.hsl()
+ * Fix : Duplication anti-consanguinité + stylisation en pointillés (stroke-dasharray) pour les branches dupliquées
  */
 
 window.SankeyModule = {
@@ -65,25 +66,69 @@ window.SankeyModule = {
                 const lng = p.lng || p.longitude || p.lon;
 
                 if (this.hasGeoData && lat && lng) {
-                    // Normalisation de la position de la ville entre 0.0 et 1.0 dans la zone familiale
-                    const rangeLat = this.geoBounds.maxLat - this.geoBounds.minLat || 1;
-                    const rangeLng = this.geoBounds.maxLng - this.geoBounds.minLng || 1;
+                  
+                    scaleA = d3.scaleLinear()
+                      .domain([this.geoBounds.minLng, this.geoBounds.maxLng])
+                      .range([-70, 70]); // Ouest -> Est (Vert vers Rouge)
+
+                    scaleB = d3.scaleLinear()
+                      .domain([this.geoBounds.minLat, this.geoBounds.maxLat])
+                      .range([-70, 70]); // Sud -> Nord (Bleu vers Jaune)
                     
-                    const pctLat = (lat - this.geoBounds.minLat) / rangeLat;
-                    const pctLng = (lng - this.geoBounds.minLng) / rangeLng;
+                    a = scaleA(lng);
+                    b = scaleB(lat);
+                    
+                    lightness = 70;
+                    console.log(`[Sankey Diagnostic] couleur : ${lat} ${lng} | lightness,a,b : ${lightness},${a},${b}`);
+                    this.colorCache.locations[loc] = this.labToRgb(lightness, a, b);
+                    
+                    // Normalisation de la position de la ville entre 0.0 et 1.0 dans la zone familiale
+                    //const rangeLat = this.geoBounds.maxLat - this.geoBounds.minLat || 1;
+                    //const rangeLng = this.geoBounds.maxLng - this.geoBounds.minLng || 1;
+                    
+                    //const pctLat = (lat - this.geoBounds.minLat) / rangeLat;
+                    //const pctLng = (lng - this.geoBounds.minLng) / rangeLng;
 
                     // FORMULE RGB BIVARIÉE
-                    const R = Math.round(60 + pctLng * 195);
-                    const B = Math.round(60 + pctLat * 195);
-                    const G = Math.round(140 + ((pctLat + pctLng) / 2) * 60);
+                    //const R = Math.round(60 + pctLng * 195);
+                    //const B = Math.round(60 + pctLat * 195);
+                    //const G = Math.round(140 + ((pctLat + pctLng) / 2) * 60);
 
-                    this.colorCache.locations[loc] = `rgb(${R}, ${G}, ${B})`;
+                    //this.colorCache.locations[loc] = `rgb(${R}, ${G}, ${B})`;
                 } else {
                     this.colorCache.locations[loc] = this.generateTextHashColor(loc, 60, 55);
                 }
             }
         });
     },
+
+    /**
+     * Convertit des coordonnées LAB pures en chaîne "rgb(r,g,b)" standard
+     * Formule physique de conversion standard (CIE XYZ vers sRGB)
+     */
+    labToRgb(l, a, b) {
+        let y = (l + 16) / 116;
+        let x = a / 500 + y;
+        let z = y - b / 200;
+
+        const fn = (v) => (v * v * v > 0.008856 ? v * v * v : (v - 16 / 116) / 7.787);
+        x = 0.95047 * fn(x);
+        y = 1.00000 * fn(y);
+        z = 1.08883 * fn(z);
+
+        // Matrice de transformation XYZ vers sRGB
+        let r = x * 3.2406 + y * -1.5372 + z * -0.4986;
+        let g = x * -0.9689 + y * 1.8758 + z * 0.0415;
+        let bC = x * 0.0557 + y * -0.2040 + z * 1.0570;
+
+        const adjust = (c) => Math.round(255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055));
+        
+        // On bride entre 0 et 255 pour éviter les bugs CSS
+        return `rgb(${Math.max(0, Math.min(255, adjust(r)))}, ${Math.max(0, Math.min(255, adjust(g)))}, ${Math.max(0, Math.min(255, adjust(bC)))})`;
+    },
+
+
+
 
     /**
      * Algorithme de secours (Hachage textuel HSL)
@@ -113,45 +158,111 @@ window.SankeyModule = {
         if (App.currentPerson) this.render(App.currentPerson);
     },
 
+    /**
+     * CORRECTION FIX : Clone de manière étanche les individus consanguins
+     * Associe une métadonnée 'isConsanguineous' pour le rendu graphique ultérieur.
+     */
+/**
+     * Version de diagnostic avec Logs Ultra-Précis
+     * Permet de comprendre pourquoi le graphe ne change pas et de pister l'arbre généalogique.
+     */
     prepareData(targetId) {
+        console.log("%c[Sankey Diagnostic] --- DÉBUT DE PREPAREDATA ---", "background: #2b6cb0; color: white; padding: 4px; font-weight: bold;");
+        console.log(`[Sankey Diagnostic] Individu cible : ${targetId} | Max Générations configurées : ${this.maxGenerations}`);
+        
         let nodes = [];
         let links = [];
-        let nodeMap = new Map();
+        let vus = new Set(); // Traque les ID réels de la base de données
 
-        const traverse = (id, gen) => {
-            if (gen > this.maxGenerations) return;
+        const traverse = (id, gen, forceConsanguineous = false) => {
+            const indent = "  ".repeat(gen); // Pour une jolie lecture en arbre dans la console
+            
+            if (gen > this.maxGenerations) {
+                console.log(`%c${indent}└─ [Stop] Génération ${gen} dépasse la limite (${this.maxGenerations})`, "color: #a0aec0;");
+                return undefined;
+            }
+            
             const p = App.nodes.find(n => n.id === id);
-            if (!p) return;
-
-            if (!nodeMap.has(id)) {
-                nodeMap.set(id, nodes.length);
-                nodes.push({
-                    ...p, 
-                    name: `${p.firstname} ${p.surname.charAt(0)}.`,
-                    year: p.birth || p.computedBirth || 1900,
-                    color: this.getPersonColor(p),
-                    gen: gen
-                });
+            if (!p) {
+                console.error(`${indent}X Individu introuvable dans App.nodes pour l'ID : ${id}`);
+                return undefined;
             }
 
+            // Détection : est-ce que cet ID réel a déjà été vu ailleurs dans l'arbre ?
+            const dejavu = vus.has(id);
+            if (dejavu) {
+                console.log(`%c${indent}► [CONSAINGUINITÉ DÉTECTÉE] L'ID ${id} (${p.firstname} ${p.surname}) a déjà été croisé dans une autre branche !`, "background: #fff5f5; color: #c53030; font-weight: bold; border: 1px solid #fed7d7;");
+            } else {
+                vus.add(id);
+            }
+
+            // Un nœud est consanguin s'il a déjà été vu OU si son enfant direct l'était (cascade)
+            const nodeIsConsanguineous = dejavu || forceConsanguineous;
+
+            if (forceConsanguineous && !dejavu) {
+                console.log(`%c${indent}↳ [CASCADE] ${p.firstname} ${p.surname} (ID: ${id}) est forcé en pointillé car c'est un ancêtre de la branche consanguine.`, "color: #dd6b20; font-style: italic;");
+            }
+
+            // Masse du flux stable pour éviter que le ruban ne s'amincisse
+            const epaisseurFlux = 10 * Math.pow(2, this.maxGenerations - gen);
+
+            // Génération d'une clé de graphe 100% unique pour D3
+            const idUniqueGraphe = `${id}_gen${gen}_u${Math.random().toString(36).substr(2, 5)}`;
+
+            const currentClone = {
+                ...p,
+                id_unique_graphe: idUniqueGraphe,
+                id_original: id,
+                name: `${p.firstname} ${p.surname.charAt(0)}.`,
+                year: p.birth || p.computedBirth || 1900,
+                color: this.getPersonColor(p),
+                gen: gen,
+                value: epaisseurFlux,
+                isConsanguineous: nodeIsConsanguineous
+            };
+
+            nodes.push(currentClone);
+            console.log(`${indent}✔ Création du nœud clone [${currentClone.name}] | Gen: ${gen} | ID Unique Graphe: ${idUniqueGraphe} | Pointillé: ${nodeIsConsanguineous}`);
+
             const parents = App.fullData.links.filter(l => l.target === id && l.type === "parent");
-            parents.forEach(l => {
-                const sourceIdx = traverse(l.source, gen + 1);
-                if (sourceIdx !== undefined) {
+            console.log(`${indent}  Found ${parents.length} parents pour ${p.firstname}`);
+
+            parents.forEach((l, index) => {
+                console.log(`${indent}  Remontée vers le parent ${index + 1}/${parents.length} (ID Source: ${l.source})`);
+                
+                // TRANSMISSION EN CASCADE
+                const parentClone = traverse(l.source, gen + 1, nodeIsConsanguineous);
+                
+                if (parentClone !== undefined) {
+                    const valeurLien = 10 * Math.pow(2, this.maxGenerations - (gen + 1));
+                    
                     links.push({
-                        source: sourceIdx,
-                        target: nodeMap.get(id),
-                        value: 10 * Math.pow(2, this.maxGenerations - gen)
+                        source: parentClone.id_unique_graphe,
+                        target: currentClone.id_unique_graphe,
+                        value: valeurLien,
+                        isConsanguineous: nodeIsConsanguineous
                     });
+                    
+                    console.log(`%c${indent}  + Lien créé : [${parentClone.name}] (Gen ${gen+1}) ===> [${currentClone.name}] (Gen ${gen}) | Ruban Pointillé: ${nodeIsConsanguineous}`, "color: #319795;");
                 }
             });
-            return nodeMap.get(id);
+            
+            return currentClone;
         };
 
-        traverse(targetId, 0);
+        // Lancement de l'arbre
+        traverse(targetId, 0, false);
+        
+        console.log("%c[Sankey Diagnostic] --- BILAN DES DONNÉES GÉNÉRÉES ---", "background: #2b6cb0; color: white; padding: 4px; font-weight: bold;");
+        console.log(`[Sankey Diagnostic] Total Nœuds Clones : ${nodes.length}`);
+        console.log(`[Sankey Diagnostic] Total Liens créés  : ${links.length}`);
+        console.log("[Sankey Diagnostic] Liste complète des Nœuds :", nodes);
+        console.log("[Sankey Diagnostic] Liste complète des Liens :", links);
+        console.log("%c----------------------------------------------------", "color: #2b6cb0; font-weight: bold;");
+        
         return { nodes, links };
     },
-
+    
     render(targetPerson) {
         console.log("{Sankey} Rendu du Sankey pour :", targetPerson ? `${targetPerson.firstname} ${targetPerson.surname}` : "Aucune personne cible");
         
@@ -195,7 +306,9 @@ window.SankeyModule = {
             .domain([d3.min(data.nodes, d => d.year), d3.max(data.nodes, d => d.year)])
             .range([0, width]);
 
+        // Configuration D3-Sankey : On spécifie l'ID unique généré pour lier correctement les clones
         const sankey = d3.sankey()
+            .nodeId(d => d.id_unique_graphe)
             .nodeWidth(14)
             .nodePadding(6) 
             .extent([[0, 0], [width, height]]);
@@ -231,7 +344,9 @@ window.SankeyModule = {
             .attr("d", d3.sankeyLinkHorizontal())
             .attr("stroke", d => d.source.color)
             .attr("stroke-width", d => Math.max(4, d.width)) 
-            .attr("stroke-opacity", 0.6);
+            .attr("stroke-opacity", d => d.isConsanguineous ? 0.35 : 0.6) // Un peu plus discret si consanguin
+            // APPLICATION DU STYLE POINTILLÉ SUR LE RUBAN CONSAINGUIN
+            .attr("stroke-dasharray", d => d.isConsanguineous ? "4,4" : "none");
 
         // Nœuds
         const node = svg.append("g")
@@ -247,7 +362,12 @@ window.SankeyModule = {
             .attr("height", d => Math.max(6, d.y1 - d.y0)) 
             .attr("width", d => d.x1 - d.x0)
             .attr("fill", d => d.color)
-            .attr("rx", 3);
+            .attr("rx", 3)
+            // APPLICATION DE LA BORDURE EN POINTILLÉ SUR LE BLOC CONSAINGUIN DUPLIQUÉ
+            .attr("stroke", d => d.isConsanguineous ? "#4a5568" : "none")
+            .attr("stroke-width", d => d.isConsanguineous ? "1.5px" : "0px")
+            .attr("stroke-dasharray", d => d.isConsanguineous ? "3,3" : "none")
+            .attr("stroke-opacity", d => d.isConsanguineous ? 0.8 : 1);
 
         // Textes
         node.append("text")
@@ -357,12 +477,12 @@ window.SankeyModule = {
             .transition().duration(200)
             .attr("stroke", d => (d.source && (isMatch(d.source) || isMatch(d.target))) ? "#e53e3e" : (d.source ? d.source.color : "#ccc"))
             .attr("stroke-width", d => (d.source && (isMatch(d.source) || isMatch(d.target))) ? (Math.max(4, d.width) + 3) : Math.max(4, d.width))
-            .attr("stroke-opacity", d => (d.source && (isMatch(d.source) || isMatch(d.target))) ? 0.8 : 0.05);
+            .attr("stroke-opacity", d => (d.source && (isMatch(d.source) || isMatch(d.target))) ? 0.8 : (d.isConsanguineous ? 0.03 : 0.05)); // Gère le fondu si consanguin
 
         d3.select("#sankey-viz").selectAll(".sankey-rect")
             .transition().duration(200)
-            .attr("stroke", d => isMatch(d) ? "#e53e3e" : "none")
-            .attr("stroke-width", d => isMatch(d) ? "2px" : "0px")
+            .attr("stroke", d => isMatch(d) ? "#e53e3e" : (d.isConsanguineous ? "#4a5568" : "none"))
+            .attr("stroke-width", d => isMatch(d) ? "2px" : (d.isConsanguineous ? "1.5px" : "0px"))
             .style("opacity", d => isMatch(d) ? 1 : 0.15);
 
         d3.select("#sankey-viz").selectAll(".sankey-text")
@@ -385,11 +505,12 @@ window.SankeyModule = {
             .transition().duration(200)
             .attr("stroke", d => d.source ? d.source.color : "#ccc")
             .attr("stroke-width", d => Math.max(4, d.width))
-            .attr("stroke-opacity", 0.6);
+            .attr("stroke-opacity", d => d.isConsanguineous ? 0.35 : 0.6);
 
         d3.select("#sankey-viz").selectAll(".sankey-rect")
             .transition().duration(200)
-            .attr("stroke", "none")
+            .attr("stroke", d => d.isConsanguineous ? "#4a5568" : "none")
+            .attr("stroke-width", d => d.isConsanguineous ? "1.5px" : "0px")
             .style("opacity", 1.0);
 
         d3.select("#sankey-viz").selectAll(".sankey-text")
@@ -455,7 +576,7 @@ window.SankeyModule = {
             let c = d3.color(baseColor);
             let targetColor = baseColor;
             if (c) {
-                let hsl = d3.hsl(c); // CORRECTION : d3.hsl(c) au lieu de c.hsl()
+                let hsl = d3.hsl(c); 
                 hsl.l = lightnessMod / 100; 
                 targetColor = hsl.toString();
             }
@@ -476,7 +597,7 @@ window.SankeyModule = {
             .style("fill", d => {
                 let c = d3.color(d.color);
                 if (!c) return d.color;
-                let hsl = d3.hsl(c); // CORRECTION : d3.hsl(c) au lieu de c.hsl()
+                let hsl = d3.hsl(c); 
                 hsl.l = lightnessMod / 100;
                 return hsl.toString();
             });
@@ -486,7 +607,7 @@ window.SankeyModule = {
                 if (!d.source || !d.source.color) return "#ccc";
                 let c = d3.color(d.source.color);
                 if (!c) return d.source.color;
-                let hsl = d3.hsl(c); // CORRECTION : d3.hsl(c) au lieu de c.hsl()
+                let hsl = d3.hsl(c); 
                 hsl.l = lightnessMod / 100;
                 return hsl.toString();
             });
@@ -503,10 +624,11 @@ window.SankeyModule = {
     },
 
     /**
-     * Génère un SVG Haute Définition autonome avec correction universelle de la luminosité
+     * Génère un SVG Haute Définition autonome avec correction universelle de la luminosité et inclusion des pointillés
      */
     processHighResExport() {
         if (!App.currentPerson) return alert("Aucune personne sélectionnée pour l'export.");
+        console.log("{Sankey processHighResExport} Rendu du Sankey pour :", App.currentPerson ? `${App.currentPerson.firstname} ${App.currentPerson.surname}` : "Aucune personne cible");
 
         if (!window.jspdf) {
             const script = document.createElement('script');
@@ -535,6 +657,8 @@ window.SankeyModule = {
         const originalMaxGen = this.maxGenerations;
         this.maxGenerations = targetGen;
         const data = this.prepareData(App.currentPerson.id);
+        console.log("{Sankey processHighResExport} Data preparees du Sankey  :", data );
+
         this.maxGenerations = originalMaxGen; 
 
         if (data.nodes.length === 0) return alert("Pas de données pour cette sélection.");
@@ -542,7 +666,7 @@ window.SankeyModule = {
         data.nodes.forEach(n => {
             let c = d3.color(n.color);
             if (c) {
-                let hsl = d3.hsl(c); // CORRECTION : d3.hsl(c) au lieu de c.hsl()
+                let hsl = d3.hsl(c); 
                 hsl.l = lightnessMod / 100; 
                 n.color = hsl.toString();
             }
@@ -568,6 +692,7 @@ window.SankeyModule = {
             .range([0, innerWidth]);
 
         const sankey = d3.sankey()
+            .nodeId(d => d.id_unique_graphe) // Appliqué également à la fonction d'exportation
             .nodeWidth(exportWidth * 0.012) 
             .nodePadding(dynamicPadding) 
             .extent([[0, 0], [innerWidth, innerHeight]])
@@ -680,7 +805,9 @@ window.SankeyModule = {
             .attr("d", d3.sankeyLinkHorizontal())
             .attr("stroke", d => d.source.color)
             .attr("stroke-width", d => Math.max(1.5, d.width))
-            .attr("stroke-opacity", 0.45);
+            .attr("stroke-opacity", d => d.isConsanguineous ? 0.25 : 0.45)
+            // STYLE EN POINTILLÉ POUR L'EXPORT HIGH-RES DU RUBAN
+            .attr("stroke-dasharray", d => d.isConsanguineous ? "12,12" : "none"); // Valeurs plus grandes car résolution supérieure
 
         const node = g.append("g")
             .selectAll("g")
@@ -693,7 +820,11 @@ window.SankeyModule = {
             .attr("height", d => Math.max(2, d.y1 - d.y0))
             .attr("width", d => d.x1 - d.x0)
             .attr("fill", d => d.color)
-            .attr("rx", 3);
+            .attr("rx", 3)
+            // STYLISATION DES BLOCS DUPLIQUÉS POUR L'EXPORT HIGH-RES
+            .attr("stroke", d => d.isConsanguineous ? "#4a5568" : "none")
+            .attr("stroke-width", d => d.isConsanguineous ? "4px" : "0px")
+            .attr("stroke-dasharray", d => d.isConsanguineous ? "8,8" : "none");
 
         node.append("text")
             .attr("x", d => d.x1 + 10)
