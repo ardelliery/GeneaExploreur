@@ -646,12 +646,13 @@ window.SankeyModule = {
         let exportWidth = 3508;  
         let exportHeight = 2480;
         let maxFontSize = 24;   
+        let minFontSize = 9;   
 
         if (format === 'A3') { exportWidth = 4960; exportHeight = 3508; maxFontSize = 36; }
         if (format === 'A2') { exportWidth = 7016; exportHeight = 4960; maxFontSize = 52; }
         if (format === 'A1') { exportWidth = 9933; exportHeight = 7016; maxFontSize = 74; }
 
-        const exportMargin = { top: exportHeight * 0.05, right: exportWidth * 0.16, bottom: exportHeight * 0.06, left: exportWidth * 0.03 };
+        const exportMargin = { top: exportHeight * 0.05, right: exportWidth * 0.21, bottom: exportHeight * 0.16, left: exportWidth * 0.03 };
         const innerWidth = exportWidth - exportMargin.left - exportMargin.right;
         const innerHeight = exportHeight - exportMargin.top - exportMargin.bottom;
 
@@ -824,24 +825,93 @@ window.SankeyModule = {
             .attr("rx", 3)
             // STYLISATION DES BLOCS DUPLIQUÉS POUR L'EXPORT HIGH-RES
             .attr("stroke", d => d.isConsanguineous ? "#4a5568" : "none")
-            .attr("stroke-width", d => d.isConsanguineous ? "4px" : "0px")
+            .attr("stroke-width", d => d.isConsanguineous ? "3px" : "0px")
             .attr("stroke-dasharray", d => d.isConsanguineous ? "8,8" : "none");
 
-        node.append("text")
-            .attr("x", d => d.x1 + 10)
-            .attr("y", d => (d.y1 + d.y0) / 2)
-            .attr("dy", "0.35em")
-            .text(d => `${d.firstname} ${d.surname.toUpperCase()} (${d.year})`)
-            .style("font-family", "system-ui, sans-serif")
-            .style("font-weight", "600")
-            .style("fill", "#1a202c")
-            .style("font-size", d => {
-                const nodeHeight = d.y1 - d.y0;
-                const optimalSize = Math.min(maxFontSize, Math.max(10, nodeHeight * 1.2));
-                return `${optimalSize}px`;
-            })
-            .style("display", d => (d.y1 - d.y0 < 6) ? "none" : "block");
+        const textNode = g.append("g")
+            .selectAll("g")
+            .data(nodes)
+            .join("g");
 
+        textNode.each(function(d) {
+            const currentG = d3.select(this);
+            const nodeHeight = d.y1 - d.y0; // Hauteur totale du rectangle
+            const nodeWidth = d.x1 - d.x0;   // Largeur (épaisseur) du rectangle
+
+            if (d.gen === 0) {
+                // =========================================================
+                // CONFIGURATION POUR LA PERSONNE SÉLECTIONNÉE (3 LIGNES)
+                // =========================================================
+                const line1 = d.surname.toUpperCase();
+                const line2 = d.firstname;
+                const line3 = `(${d.year})`;
+
+                // 1. DÉCALAGE HORIZONTAL OPTIMISÉ : Largeur du bloc + 10px de marge
+                const safetyMarginX = nodeWidth + (maxFontSize * 2.5);
+                const posX = d.x1 + safetyMarginX;
+                const posY = (d.y1 + d.y0) / 2;
+
+                // 2. LOGIQUE DE POLICE MAXIMALE : On cherche le nombre maximum de caractères parmi les 3 lignes
+                const maxChars = Math.max(line1.length, line2.length, line3.length);
+                
+                // En SVG vertical (pivoté à -90°), la hauteur du bloc fait office de longueur pour le texte.
+                // On estime qu'un caractère standard a un ratio d'aspect d'environ 0.55 à 0.6 fois sa hauteur.
+                // On prend 98% (0.98) de la hauteur du bloc pour l'occuper au maximum sans aucune perte d'espace.
+                const sizeBasedOnHeight = (nodeHeight * 0.98) / (maxChars * 0.58);
+                
+                // Sécurité : On peut brider la taille maximale pour éviter un texte disproportionné si le bloc est gigantesque
+                const optimalSize = Math.min(maxFontSize * 2.5 , sizeBasedOnHeight);
+
+                // Création du conteneur de texte avec son point d'ancrage décalé et sa rotation
+                const textBlock = currentG.append("text")
+                    .attr("x", posX)
+                    .attr("y", posY)
+                    .style("font-family", "system-ui, sans-serif")
+                    .style("font-weight", "500") // Ultra-gras pour un effet design fort
+                    .style("fill", "#1a202c")
+                    .style("font-size", `${optimalSize}px`)
+                    .style("text-anchor", "middle") // Centrage sur la hauteur grâce à la rotation
+                    .attr("transform", `rotate(-90, ${posX}, ${posY})`);
+
+                // Affichage de la Ligne 1 : NOM (Ligne de référence centrale)
+                textBlock.append("tspan")
+                    .text(line1)
+                    .attr("x", posX)
+                    .attr("dy", "-0.4em") // Légèrement décalée vers la gauche pour faire de la place aux autres
+                    .style("font-weight", "900"); // <--- UNIQUEMENT LE NOM EN ULTRA-GRAS
+
+                // Affichage de la Ligne 2 : Prénom
+                textBlock.append("tspan")
+                    .text(line2)
+                    .attr("x", posX)
+                    .style("font-style", "italic")
+                    .attr("dy", "1.05em"); // Saut de ligne vers la droite
+
+                // Affichage de la Ligne 3 : Date de naissance
+                textBlock.append("tspan")
+                    .text(line3)
+                    .attr("x", posX)
+                    .attr("dy", "1.05em"); // Deuxième saut de ligne vers la droite
+
+            } else {
+                // =========================================================
+                // CONFIGURATION CLASSIQUE POUR LES AUTRES PERSONNES (1 LIGNE)
+                // =========================================================
+                const optimalSize = Math.min(maxFontSize, Math.max(minFontSize, nodeHeight * 1.2));
+                
+                currentG.append("text")
+                    .attr("x", d.x1 + 10)
+                    .attr("y", (d.y1 + d.y0) / 2)
+                    .attr("dy", "0.35em")
+                    .text(`${d.firstname} ${d.surname.toUpperCase()} (${d.year})`)
+                    .style("font-family", "system-ui, sans-serif")
+                    .style("font-weight", "600")
+                    .style("fill", "#1a202c")
+                    .style("font-size", `${optimalSize}px`)
+                    .style("text-anchor", "start");
+            }
+        });            
+        
         // =================================================================
         // LÉGENDE CARTOGRAPHIQUE VIA CHARGEMENT DE VRAIS GEOJSON (HD)
         // =================================================================
@@ -915,8 +985,8 @@ window.SankeyModule = {
                 .data(franceData.features)
                 .join("path")
                 .attr("d", geoPath)
-//                .attr("fill", "#f8fafc")
-                .attr("fill", "none")
+                .attr("fill", "#f8fafc")
+//                .attr("fill", "none")
                 .attr("stroke", "#cbd5e0")
                 .attr("stroke-width", "0.5px") // Très fin pour ne pas saturer le dessin
                 .attr("stroke-linejoin", "round");
