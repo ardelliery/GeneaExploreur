@@ -1,3 +1,11 @@
+"""
+Module de recherche géographique en cascade avec la base GeoNames.
+
+Ce script enrichit la liste des lieux extraits d'un fichier GEDCOM en recherchant
+leurs coordonnées géographiques (latitude, longitude), code INSEE et département
+dans les fichiers de référence GeoNames (ex: FR.txt, CH.txt) via une stratégie de recherche en cascade.
+"""
+
 import csv
 import os
 import logging
@@ -11,7 +19,19 @@ OUTPUT_CSV = 'liste_lieux_complet.csv'
 GEONAMES_FILES = ['FR.txt', 'CH.txt']
 
 def load_geonames_to_dict(files):
-    """Charge les fichiers GeoNames dans un dictionnaire optimisé"""
+    """
+    Charge les fichiers de référence GeoNames dans un dictionnaire d'indexation optimisé.
+
+    Parcourt la liste de fichiers texte au format tabulé GeoNames et associe
+    chaque nom de localité (et son alternative ASCII) à ses métadonnées
+    géographiques (coordonnées lat/lon, code INSEE, département).
+
+    :param files: Liste des chemins vers les fichiers GeoNames de référence.
+    :type files: list[str]
+    :returns: Dictionnaire associant les noms de lieux nettoyés en minuscules
+              à un dictionnaire contenant les clés 'lat', 'lon', 'insee' et 'dept'.
+    :rtype: dict[str, dict[str, str]]
+    """
     geo_data = {}
     print("Chargement des bases France et Suisse...")
     for filename in files:
@@ -38,6 +58,15 @@ def load_geonames_to_dict(files):
     return geo_data
 
 def main():
+    """
+    Fonction principale d'enrichissement géographique par recherche en cascade.
+
+    Charge les données GeoNames, lit le fichier CSV des lieux d'entrée (:const:`INPUT_CSV`),
+    exécute les différentes étapes de recherche en cascade (nom complet, 1re partie,
+    2e partie de la chaîne) et exporte le résultat dans :const:`OUTPUT_CSV`.
+
+    :returns: None
+    """
     geo_index = load_geonames_to_dict(GEONAMES_FILES)
     results = []
     

@@ -1,3 +1,11 @@
+"""
+Module d'extraction des lieux depuis un fichier GEDCOM.
+
+Ce script parcourt un fichier GEDCOM, vérifie la présence des dates et lieux
+de naissance pour chaque individu (avec journalisation des anomalies dans un fichier de log),
+et génère un fichier CSV contenant la liste des lieux uniques.
+"""
+
 import csv
 import logging
 from gedcom.element.individual import IndividualElement
@@ -11,6 +19,15 @@ GEDCOM_FILE = 'LoicMarion.ged'
 PLACES_OUTPUT = 'liste_lieux.csv'
 
 def main():
+    """
+    Fonction principale d'extraction et d'audit des lieux du fichier GEDCOM.
+
+    Lit le fichier GEDCOM configuré via :const:`GEDCOM_FILE`, audite la présence
+    des dates et lieux de naissance des individus, et enregistre la liste
+    des lieux uniques triés dans :const:`PLACES_OUTPUT`.
+
+    :returns: None
+    """
     gedcom_parser = Parser()
     gedcom_parser.parse_file(GEDCOM_FILE)
     unique_places = set()

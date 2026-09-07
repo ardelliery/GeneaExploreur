@@ -1,3 +1,11 @@
+"""
+Module de génération du fichier de données JSON pour la visualisation.
+
+Ce script croise les informations des individus et familles extraites du fichier GEDCOM
+avec le référentiel géographique géolocalisé pour produire le fichier JSON complet
+contenant les nœuds (individus) et les liens (mariages et filiations) exploités par l'application web.
+"""
+
 import json
 import re
 import csv
@@ -14,11 +22,28 @@ PLACES_CSV = 'liste_lieux_complet.csv'
 OUTPUT_FILE = 'data.json'
 
 def get_year(date_str):
+    """
+    Extrait la première année à quatre chiffres trouvée dans une chaîne de date.
+
+    :param date_str: La chaîne représentant une date au format GEDCOM (ex: '12 JAN 1850').
+    :type date_str: str or None
+    :returns: L'année sous forme d'entier si elle est trouvée, sinon None.
+    :rtype: int or None
+    """
     if not date_str: return None
     match = re.search(r'\d{4}', date_str)
     return int(match.group()) if match else None
 
 def main():
+    """
+    Fonction principale de génération des données JSON pour la visualisation.
+
+    Charge le référentiel géographique (:const:`PLACES_CSV`), extrait les données
+    des individus et des relations familiales (mariages, parenté) depuis le fichier
+    GEDCOM (:const:`GEDCOM_FILE`), et écrit la structure JSON globale dans :const:`OUTPUT_FILE`.
+
+    :returns: None
+    """
     # 1. Charger le référentiel géographique
     geo_ref = {}
     try:
