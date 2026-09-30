@@ -402,9 +402,18 @@ window.SankeyModule = {
 
         const stats = {};
         nodes.forEach(n => {
-            const label = (this.mode === 'name') ? 
-                (n.surname || "Inconnu").toUpperCase() : 
-                (n.place || "Lieu Inconnu");
+            let label = "";
+
+            if (this.mode === 'name') {
+                label = (n.surname || "Inconnu").toUpperCase();
+            } else {
+                const commune = (n.place || "Lieu Inconnu").trim();
+                // Récupération du département (s'il existe dans le nœud, ex: n.dept ou n.department)
+                const dept = n.dept || n.department || n.code_dept;
+                
+                // Formatage : "dept - commune" ou juste "commune" si le département est indisponible
+                label = dept ? `${dept} - ${commune}` : commune;
+            }
                 
             if (!stats[label]) {
                 stats[label] = { count: 0, color: n.color };
@@ -467,10 +476,16 @@ window.SankeyModule = {
             }
         });
 
+
         const isMatch = (d3Node) => {
             if (!d3Node || typeof d3Node !== 'object') return false;
             const matchName = d3Node.surname && d3Node.surname.trim().toLowerCase() === valLower;
-            const matchPlace = d3Node.place && d3Node.place.trim().toLowerCase() === valLower;
+            
+            const commune = (d3Node.place || "Lieu Inconnu").trim();
+            const dept = d3Node.dept || d3Node.department || d3Node.code_dept;
+            const formattedPlace = dept ? `${dept} - ${commune}` : commune;
+            
+            const matchPlace = formattedPlace.toLowerCase() === valLower || (d3Node.place && d3Node.place.trim().toLowerCase() === valLower);
             return !!(matchName || matchPlace);
         };
 
