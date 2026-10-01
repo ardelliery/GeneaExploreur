@@ -264,7 +264,194 @@ window.SankeyModule = {
         return { nodes, links };
     },
     
+    /**
+     * Rendu principal avec dégradés dynamique entre nœuds
+     */
     render(targetPerson) {
+        console.log("{Sankey} Rendu du Sankey pour :", targetPerson ? `${targetPerson.firstname} ${targetPerson.surname}` : "Aucune personne cible");
+        
+        this.currentHighlightValue = null; 
+
+        const container = document.getElementById('sankey-viz');
+        const emptyMsg = document.getElementById('sankey-empty');
+        const vizBox = document.getElementById('sankey-viz-container');
+
+        if (!targetPerson) {
+            if (emptyMsg) emptyMsg.style.display = 'block';
+            if (vizBox) vizBox.style.display = 'none';
+            return;
+        }
+
+        if (emptyMsg) emptyMsg.style.display = 'none';
+        if (vizBox) vizBox.style.display = 'block';
+        container.innerHTML = '';
+
+        const width = container.clientWidth - this.margin.left - this.margin.right;
+
+        let currentHeight = container.clientHeight;
+        if (currentHeight <= 50) {
+            const rect = container.getBoundingClientRect();
+            const spaceLeftOnScreen = window.innerHeight - rect.top - 250; 
+            currentHeight = spaceLeftOnScreen > 300 ? spaceLeftOnScreen : 500; 
+        }
+        const height = currentHeight - this.margin.top - this.margin.bottom;
+
+        // --- CRÉATION DU SVG ET DE DU BLOC DEFS POUR LES DÉGRADÉS ---
+        const svg = d3.select("#sankey-viz")
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", height + this.margin.top + this.margin.bottom);
+
+        const defs = svg.append("defs");
+
+        const g = svg.append("g")
+            .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
+
+        const data = this.prepareData(targetPerson.id);
+        if (data.nodes.length === 0) return;
+
+        const xScale = d3.scaleLinear()
+            .domain([d3.min(data.nodes, d => d.year), d3.max(data.nodes, d => d.year)])
+            .range([0, width]);
+
+        // Configuration D3-Sankey
+        const sankey = d3.sankey()
+            .nodeId(d => d.id_unique_graphe)
+            .nodeWidth(14)
+            .nodePadding(6) 
+            .extent([[0, 0], [width, height]]);
+
+        let { nodes, links } = sankey({
+            nodes: data.nodes.map(d => Object.assign({}, d)),
+            links: data.links.map(d => Object.assign({}, d))
+        });
+
+        nodes.forEach(n => {
+            const xPos = xScale(n.year);
+            const w = n.x1 - n.x0;
+            n.x0 = xPos;
+            n.x1 = xPos + w;
+        });
+        sankey.update({ nodes, links });
+
+        // --- 1. GÉNÉRATION DES DÉGRADÉS DÉDIÉS POUR CHAQUE LIEN ---
+        const lightnessSlider = document.getElementById('sankey-lightness');
+        const lightnessVal = lightnessSlider ? parseFloat(lightnessSlider.value) || 1.0 : 1.0;
+
+        const gradients = defs.selectAll("linearGradient")
+            .data(links)
+            .join("linearGradient")
+            .attr("id", (d, i) => `sankey-gradient-${i}`)
+            .attr("gradientUnits", "userSpaceOnUse")
+            .attr("x1", d => d.source.x1)
+            .attr("y1", d => (d.source.y0 + d.source.y1) / 2)
+            .attr("x2", d => d.target.x0)
+            .attr("y2", d => (d.target.y0 + d.target.y1) / 2);
+
+        // Couleur de départ (Source)
+        gradients.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", d => {
+                const c = d3.hsl(d.source.color);
+                c.l = Math.max(0, Math.min(1, c.l * lightnessVal));
+                return c;
+            });
+
+        // Couleur d'arrivée (Target)
+        gradients.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", d => {
+                const c = d3.hsl(d.target.color);
+                c.l = Math.max(0, Math.min(1, c.l * lightnessVal));
+                return c;
+            });
+
+        // --- 2. AXE X ---
+        const xAxis = d3.axisBottom(xScale).ticks(4).tickFormat(d => d);
+        g.append("g")
+            .attr("transform", `translate(0, ${height + 8})`)
+            .call(xAxis)
+            .style("color", "#718096")
+            .selectAll("text").style("font-size", "11px");
+
+        // --- 3. LIENS AVEC APPLICATION DES DÉGRADÉS ---
+        g.append("g")
+            .attr("fill", "none")
+            .selectAll("path")
+            .data(links)
+            .join("path")
+            .attr("class", "sankey-link")
+            .attr("d", d3.sankeyLinkHorizontal())
+            .attr("stroke", (d, i) => `url(#sankey-gradient-${i})`)
+            .attr("stroke-width", d => Math.max(4, d.width)) 
+            .attr("stroke-opacity", d => d.isConsanguineous ? 0.35 : 0.6)
+            .attr("stroke-dasharray", d => d.isConsanguineous ? "4,4" : "none");
+
+        // --- 4. NŒUDS ---
+        const node = g.append("g")
+            .selectAll("g")
+            .data(nodes)
+            .join("g");
+
+        node.append("rect")
+            .attr("class", "sankey-rect")
+            .attr("x", d => d.x0)
+            .attr("y", d => d.y0)
+            .attr("height", d => Math.max(6, d.y1 - d.y0)) 
+            .attr("width", d => d.x1 - d.x0)
+            .attr("fill", d => {
+                const c = d3.hsl(d.color);
+                c.l = Math.max(0, Math.min(1, c.l * lightnessVal));
+                return c;
+            })
+            .attr("rx", 3)
+            .attr("stroke", d => d.isConsanguineous ? "#4a5568" : "none")
+            .attr("stroke-width", d => d.isConsanguineous ? "1.5px" : "0px")
+            .attr("stroke-dasharray", d => d.isConsanguineous ? "3,3" : "none")
+            .attr("stroke-opacity", d => d.isConsanguineous ? 0.8 : 1);
+
+        node.append("text")
+            .attr("class", "sankey-text")
+            .attr("x", d => d.x1 + 6)
+            .attr("y", d => (d.y1 + d.y0) / 2)
+            .attr("dy", "0.35em")
+            .text(d => d.name)
+            .style("font-size", "11px")
+            .style("font-weight", "500")
+            .style("fill", "#2d3748")
+            .style("display", d => (d.y1 - d.y0 < 4) ? "none" : "block");
+
+        this.updateLegend(data.nodes);
+    },
+
+    /**
+     * Génération de la légende
+     */
+    updateLegend(nodes) {
+        const legendContainer = document.getElementById('sankey-legend');
+        if (!legendContainer) return;
+
+        legendContainer.innerHTML = '';
+        const uniqueColors = Array.from(new Set(nodes.map(n => n.color)));
+
+        uniqueColors.forEach(color => {
+            const item = document.createElement('div');
+            item.style.cssText = 'display: inline-flex; align-items: center; margin-right: 16px; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: #4a5568;';
+            
+            const colorBox = document.createElement('span');
+            colorBox.style.cssText = `width: 12px; height: 12px; background-color: ${color}; border-radius: 2px; margin-right: 6px; display: inline-block;`;
+            
+            item.appendChild(colorBox);
+
+            const sampleNode = nodes.find(n => n.color === color);
+            const labelText = sampleNode ? sampleNode.surname : 'Branche';
+            item.appendChild(document.createTextNode(labelText));
+            
+            legendContainer.appendChild(item);
+        });
+    },
+
+    render2(targetPerson) {
         console.log("{Sankey} Rendu du Sankey pour :", targetPerson ? `${targetPerson.firstname} ${targetPerson.surname}` : "Aucune personne cible");
         
         this.currentHighlightValue = null; 
@@ -453,6 +640,10 @@ window.SankeyModule = {
         });
     },
 
+
+/**
+     * Surbrillance ciblant un nom de famille ou une commune/département
+     */
     highlightByValue(value) {
         if (!value) return;
         const valLower = value.trim().toLowerCase();
@@ -463,8 +654,9 @@ window.SankeyModule = {
         }
         this.currentHighlightValue = valLower;
 
+        // 1. Mise à jour des badges de la légende
         document.querySelectorAll('#sankey-legend .legend-item').forEach(badge => {
-            const badgeVal = badge.getAttribute('data-value').trim().toLowerCase();
+            const badgeVal = badge.getAttribute('data-value') ? badge.getAttribute('data-value').trim().toLowerCase() : '';
             if (badgeVal === valLower) {
                 badge.style.borderColor = "#e53e3e";
                 badge.style.background = "#fff5f5";
@@ -476,7 +668,7 @@ window.SankeyModule = {
             }
         });
 
-
+        // Fonction de correspondance (nom de famille ou lieu/département)
         const isMatch = (d3Node) => {
             if (!d3Node || typeof d3Node !== 'object') return false;
             const matchName = d3Node.surname && d3Node.surname.trim().toLowerCase() === valLower;
@@ -489,18 +681,24 @@ window.SankeyModule = {
             return !!(matchName || matchPlace);
         };
 
+        // 2. Mise à jour des liens (maintient les dégradés url(#sankey-gradient-i))
         d3.select("#sankey-viz").selectAll(".sankey-link")
             .transition().duration(200)
-            .attr("stroke", d => (d.source && (isMatch(d.source) || isMatch(d.target))) ? "#e53e3e" : (d.source ? d.source.color : "#ccc"))
             .attr("stroke-width", d => (d.source && (isMatch(d.source) || isMatch(d.target))) ? (Math.max(4, d.width) + 3) : Math.max(4, d.width))
-            .attr("stroke-opacity", d => (d.source && (isMatch(d.source) || isMatch(d.target))) ? 0.8 : (d.isConsanguineous ? 0.03 : 0.05)); // Gère le fondu si consanguin
+            .attr("stroke-opacity", d => {
+                const active = d.source && (isMatch(d.source) || isMatch(d.target));
+                if (active) return 0.85;
+                return d.isConsanguineous ? 0.03 : 0.05;
+            });
 
+        // 3. Mise à jour des nœuds
         d3.select("#sankey-viz").selectAll(".sankey-rect")
             .transition().duration(200)
             .attr("stroke", d => isMatch(d) ? "#e53e3e" : (d.isConsanguineous ? "#4a5568" : "none"))
             .attr("stroke-width", d => isMatch(d) ? "2px" : (d.isConsanguineous ? "1.5px" : "0px"))
             .style("opacity", d => isMatch(d) ? 1 : 0.15);
 
+        // 4. Mise à jour des étiquettes de texte
         d3.select("#sankey-viz").selectAll(".sankey-text")
             .transition().duration(200)
             .style("fill", d => isMatch(d) ? "#e53e3e" : "#2d3748")
@@ -508,18 +706,20 @@ window.SankeyModule = {
             .style("opacity", d => isMatch(d) ? 1 : 0.2);
     },
 
+    /**
+     * Réinitialisation de la surbrillance
+     */
     resetHighlight() {
         this.currentHighlightValue = null;
 
         document.querySelectorAll('#sankey-legend .legend-item').forEach(badge => {
             badge.style.borderColor = "#edf2f7";
             badge.style.background = "#f8fafc";
-            badge.style.opacity = "1";
+            badge.style.opacity = "1.0";
         });
         
         d3.select("#sankey-viz").selectAll(".sankey-link")
             .transition().duration(200)
-            .attr("stroke", d => d.source ? d.source.color : "#ccc")
             .attr("stroke-width", d => Math.max(4, d.width))
             .attr("stroke-opacity", d => d.isConsanguineous ? 0.35 : 0.6);
 
