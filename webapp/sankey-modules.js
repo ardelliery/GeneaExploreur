@@ -842,6 +842,10 @@ window.SankeyModule = {
     /**
      * Génère un SVG Haute Définition autonome avec correction universelle de la luminosité et inclusion des pointillés
      */
+/**
+     * Génère un SVG Haute Définition autonome avec dégradé sur les rubans, 
+     * correction universelle de la luminosité et inclusion des pointillés
+     */
     processHighResExport() {
         if (!App.currentPerson) return alert("Aucune personne sélectionnée pour l'export.");
         console.log("{Sankey processHighResExport} Rendu du Sankey pour :", App.currentPerson ? `${App.currentPerson.firstname} ${App.currentPerson.surname}` : "Aucune personne cible");
@@ -874,19 +878,22 @@ window.SankeyModule = {
         const originalMaxGen = this.maxGenerations;
         this.maxGenerations = targetGen;
         const data = this.prepareData(App.currentPerson.id);
-        console.log("{Sankey processHighResExport} Data preparees du Sankey  :", data );
-
         this.maxGenerations = originalMaxGen; 
 
         if (data.nodes.length === 0) return alert("Pas de données pour cette sélection.");
 
+        // Fonction utilitaire pour ajuster la luminosité
+        const adjustLightness = (colorStr) => {
+            let c = d3.color(colorStr);
+            if (!c) return colorStr;
+            let hsl = d3.hsl(c); 
+            hsl.l = lightnessMod / 100; 
+            return hsl.toString();
+        };
+
+        // Application de la luminosité sur les nœuds
         data.nodes.forEach(n => {
-            let c = d3.color(n.color);
-            if (c) {
-                let hsl = d3.hsl(c); 
-                hsl.l = lightnessMod / 100; 
-                n.color = hsl.toString();
-            }
+            n.color = adjustLightness(n.color);
         });
 
         const nodesPerGen = {};
@@ -901,6 +908,9 @@ window.SankeyModule = {
             .attr("height", exportHeight)
             .style("background-color", "#ffffff");
 
+        // 1. DÉFINITION DES DÉGRADÉS POUR LES RUBANS (LINKS)
+        const defs = virtualSvg.append("defs");
+
         const g = virtualSvg.append("g")
             .attr("transform", `translate(${exportMargin.left},${exportMargin.top})`);
 
@@ -909,7 +919,7 @@ window.SankeyModule = {
             .range([0, innerWidth]);
 
         const sankey = d3.sankey()
-            .nodeId(d => d.id_unique_graphe) // Appliqué également à la fonction d'exportation
+            .nodeId(d => d.id_unique_graphe)
             .nodeWidth(exportWidth * 0.012) 
             .nodePadding(dynamicPadding) 
             .extent([[0, 0], [innerWidth, innerHeight]])
@@ -943,12 +953,10 @@ window.SankeyModule = {
                 node.subtreeHeight = baseH;
                 return node.subtreeHeight;
             }
-            
             let parentsHeightSum = 0;
             node.parents.forEach(p => {
                 parentsHeightSum += calculateSubtreeHeight(p);
             });
-            
             let totalPadding = dynamicPadding * (node.parents.length - 1);
             node.subtreeHeight = Math.max(baseH, parentsHeightSum + totalPadding);
             return node.subtreeHeight;
@@ -958,7 +966,6 @@ window.SankeyModule = {
         function assignPositions(node, startY) {
             let nodeH = node.y1 - node.y0;
             let centerY = startY + node.subtreeHeight / 2;
-            
             node.y0 = centerY - nodeH / 2;
             node.y1 = centerY + nodeH / 2;
             
@@ -1004,6 +1011,32 @@ window.SankeyModule = {
 
         sankey.update({ nodes, links });
 
+        // 2. CRÉATION DES GRADIENTS HORIZONTAUX DYNAMIQUES
+        links.forEach((l, index) => {
+            const gradientId = `export-link-gradient-${index}`;
+            l.gradientId = gradientId;
+
+            const sourceColor = l.source.color || "#ccc";
+            const targetColor = l.target.color || sourceColor;
+
+            const linearGradient = defs.append("linearGradient")
+                .attr("id", gradientId)
+                .attr("gradientUnits", "userSpaceOnUse")
+                .attr("x1", l.source.x1)
+                .attr("y1", (l.y0 + l.y1) / 2)
+                .attr("x2", l.target.x0)
+                .attr("y2", (l.y0 + l.y1) / 2);
+
+            linearGradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", sourceColor);
+
+            linearGradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", targetColor);
+        });
+
+        // Axe des années
         const xAxis = d3.axisBottom(xScale).ticks(6).tickFormat(d => d);
         g.append("g")
             .attr("transform", `translate(0, ${innerHeight + 20})`)
@@ -1014,18 +1047,19 @@ window.SankeyModule = {
             .style("font-size", `${maxFontSize * 0.6}px`)
             .style("font-family", "system-ui, sans-serif");
 
+        // 3. RENDU DES RUBANS AVEC STROKE POINTANT VERS LE DÉGRADÉ
         g.append("g")
             .attr("fill", "none")
             .selectAll("path")
             .data(links)
             .join("path")
             .attr("d", d3.sankeyLinkHorizontal())
-            .attr("stroke", d => d.source.color)
+            .attr("stroke", d => `url(#${d.gradientId})`)
             .attr("stroke-width", d => Math.max(1.5, d.width))
-            .attr("stroke-opacity", d => d.isConsanguineous ? 0.25 : 0.45)
-            // STYLE EN POINTILLÉ POUR L'EXPORT HIGH-RES DU RUBAN
-            .attr("stroke-dasharray", d => d.isConsanguineous ? "12,12" : "none"); // Valeurs plus grandes car résolution supérieure
+            .attr("stroke-opacity", d => d.isConsanguineous ? 0.35 : 0.65)
+            .attr("stroke-dasharray", d => d.isConsanguineous ? "12,12" : "none");
 
+        // Rendu des nœuds
         const node = g.append("g")
             .selectAll("g")
             .data(nodes)
@@ -1038,11 +1072,11 @@ window.SankeyModule = {
             .attr("width", d => d.x1 - d.x0)
             .attr("fill", d => d.color)
             .attr("rx", 3)
-            // STYLISATION DES BLOCS DUPLIQUÉS POUR L'EXPORT HIGH-RES
             .attr("stroke", d => d.isConsanguineous ? "#4a5568" : "none")
             .attr("stroke-width", d => d.isConsanguineous ? "3px" : "0px")
             .attr("stroke-dasharray", d => d.isConsanguineous ? "8,8" : "none");
 
+        // Rendu des étiquettes texte
         const textNode = g.append("g")
             .selectAll("g")
             .data(nodes)
@@ -1050,68 +1084,50 @@ window.SankeyModule = {
 
         textNode.each(function(d) {
             const currentG = d3.select(this);
-            const nodeHeight = d.y1 - d.y0; // Hauteur totale du rectangle
-            const nodeWidth = d.x1 - d.x0;   // Largeur (épaisseur) du rectangle
+            const nodeHeight = d.y1 - d.y0;
+            const nodeWidth = d.x1 - d.x0;
 
             if (d.gen === 0) {
-                // =========================================================
-                // CONFIGURATION POUR LA PERSONNE SÉLECTIONNÉE (3 LIGNES)
-                // =========================================================
                 const line1 = d.surname.toUpperCase();
                 const line2 = d.firstname;
                 const line3 = `(${d.year})`;
 
-                // 1. DÉCALAGE HORIZONTAL OPTIMISÉ : Largeur du bloc + 10px de marge
                 const safetyMarginX = nodeWidth + (maxFontSize * 2.5);
                 const posX = d.x1 + safetyMarginX;
                 const posY = (d.y1 + d.y0) / 2;
 
-                // 2. LOGIQUE DE POLICE MAXIMALE : On cherche le nombre maximum de caractères parmi les 3 lignes
                 const maxChars = Math.max(line1.length, line2.length, line3.length);
-                
-                // En SVG vertical (pivoté à -90°), la hauteur du bloc fait office de longueur pour le texte.
-                // On estime qu'un caractère standard a un ratio d'aspect d'environ 0.55 à 0.6 fois sa hauteur.
-                // On prend 98% (0.98) de la hauteur du bloc pour l'occuper au maximum sans aucune perte d'espace.
                 const sizeBasedOnHeight = (nodeHeight * 0.98) / (maxChars * 0.58);
-                
-                // Sécurité : On peut brider la taille maximale pour éviter un texte disproportionné si le bloc est gigantesque
                 const optimalSize = Math.min(maxFontSize * 2.5 , sizeBasedOnHeight);
 
-                // Création du conteneur de texte avec son point d'ancrage décalé et sa rotation
                 const textBlock = currentG.append("text")
                     .attr("x", posX)
                     .attr("y", posY)
                     .style("font-family", "system-ui, sans-serif")
-                    .style("font-weight", "500") // Ultra-gras pour un effet design fort
+                    .style("font-weight", "500")
                     .style("fill", "#1a202c")
                     .style("font-size", `${optimalSize}px`)
-                    .style("text-anchor", "middle") // Centrage sur la hauteur grâce à la rotation
+                    .style("text-anchor", "middle")
                     .attr("transform", `rotate(-90, ${posX}, ${posY})`);
 
-                // Affichage de la Ligne 1 : NOM (Ligne de référence centrale)
                 textBlock.append("tspan")
                     .text(line1)
                     .attr("x", posX)
-                    .attr("dy", "-0.4em") // Légèrement décalée vers la gauche pour faire de la place aux autres
-                    .style("font-weight", "900"); // <--- UNIQUEMENT LE NOM EN ULTRA-GRAS
+                    .attr("dy", "-0.4em")
+                    .style("font-weight", "900");
 
-                // Affichage de la Ligne 2 : Prénom
                 textBlock.append("tspan")
                     .text(line2)
                     .attr("x", posX)
                     .style("font-style", "italic")
-                    .attr("dy", "1.05em"); // Saut de ligne vers la droite
+                    .attr("dy", "1.05em");
 
-                // Affichage de la Ligne 3 : Date de naissance
                 textBlock.append("tspan")
                     .text(line3)
                     .attr("x", posX)
-                    .attr("dy", "1.05em"); // Deuxième saut de ligne vers la droite
+                    .attr("dy", "1.05em");
 
             } else {
-                // =========================================================
-                // CONFIGURATION CLASSIQUE POUR LES AUTRES PERSONNES (1 LIGNE)
-                // =========================================================
                 const optimalSize = Math.min(maxFontSize, Math.max(minFontSize, nodeHeight * 1.2));
                 
                 currentG.append("text")
@@ -1127,12 +1143,8 @@ window.SankeyModule = {
             }
         });            
         
-        // =================================================================
-        // LÉGENDE CARTOGRAPHIQUE VIA CHARGEMENT DE VRAIS GEOJSON (HD)
-        // =================================================================
-        
-        // 1. Dimensions et positionnement du module de légende
-        const mapBoxWidth = exportWidth * 0.18;   // Légèrement plus large pour le confort visuel
+        // Légende Cartographique
+        const mapBoxWidth = exportWidth * 0.18;
         const mapBoxHeight = exportWidth * 0.15;  
         const mapX = exportWidth - mapBoxWidth - (exportWidth * 0.02);
         const mapY = exportHeight - mapBoxHeight - (exportHeight * 0.07);
@@ -1141,18 +1153,14 @@ window.SankeyModule = {
             .attr("id", "carto-legende")
             .attr("transform", `translate(${mapX}, ${mapY})`);
 
-        // Cadre extérieur
         mapGroup.append("rect")
             .attr("width", mapBoxWidth)
             .attr("height", mapBoxHeight)
-//            .attr("fill", "#ffffff")
             .attr("fill", "none")
-//            .attr("stroke", "#cbd5e0")
             .attr("stroke", "none")
             .attr("stroke-width", "3px")
             .attr("rx", 14);
 
-        // Titre de l'index
         mapGroup.append("text")
             .attr("x", mapBoxWidth / 2)
             .attr("y", maxFontSize * 0.8)
@@ -1163,37 +1171,27 @@ window.SankeyModule = {
             .style("font-size", `${maxFontSize * 0.55}px`)
             .style("fill", "#1a202c");
 
-        // Zone d'affichage interne pour la carte (en laissant des marges pour le titre)
         const innerMapWidth = mapBoxWidth * 0.92;
         const innerMapHeight = mapBoxHeight - (maxFontSize * 1.4) - 20;
         
         const innerMapGroup = mapGroup.append("g")
             .attr("transform", `translate(${mapBoxWidth * 0.04}, ${maxFontSize * 1.2})`);
 
-        // CHARGEMENT ET CORRÉLATION DES GEOJSON
-        // Ajustez ici les chemins d'accès réels à vos fichiers localement
         const geojsonFranceUrl = "departements-version-simplifiee.geojson";
         const geojsonSuisseUrl = "ch-districts.geojson";
 
-        // Comme le processus d'export d'origine attend un rendu synchrone pour le Canvas, 
-        // nous encapsulons le chargement. Idéalement, pré-chargez ces fichiers ou traitez-les en Promise.
         Promise.all([
             d3.json(geojsonFranceUrl),
             d3.json(geojsonSuisseUrl)
         ]).then(([franceData, suisseData]) => {
-            
-            // Fusion temporaire des features pour calculer le cadrage global idéal de la projection
             const combinedFeatures = [...franceData.features, ...suisseData.features];
             const featureCollection = { type: "FeatureCollection", features: combinedFeatures };
 
-            // Configuration de la projection Mercator calée précisément sur notre boîte SVG
             const projection = d3.geoMercator()
                 .fitSize([innerMapWidth, innerMapHeight], featureCollection);
 
-            // Générateur de chemins D3
             const geoPath = d3.geoPath().projection(projection);
 
-            // Dessin des départements Français
             innerMapGroup.append("g")
                 .attr("class", "france-layers")
                 .selectAll("path")
@@ -1201,26 +1199,21 @@ window.SankeyModule = {
                 .join("path")
                 .attr("d", geoPath)
                 .attr("fill", "#f8fafc")
-//                .attr("fill", "none")
                 .attr("stroke", "#cbd5e0")
-                .attr("stroke-width", "0.5px") // Très fin pour ne pas saturer le dessin
+                .attr("stroke-width", "0.5px")
                 .attr("stroke-linejoin", "round");
 
-            // Dessin des districts Suisses (avec une teinte de fond subtilement différente pour l'identification)
             innerMapGroup.append("g")
                 .attr("class", "suisse-layers")
                 .selectAll("path")
                 .data(suisseData.features)
                 .join("path")
                 .attr("d", geoPath)
-//                .attr("fill", "#f1f5f9")
                 .attr("fill", "none")
                 .attr("stroke", "#94a3b8")
                 .attr("stroke-width", "0.5px")
                 .attr("stroke-linejoin", "round");
 
-            // Rajout d'une ligne de frontière nationale plus épaisse pour bien démarquer la France et la Suisse
-            // D3 s'occupe de tout recalculer de manière transparente
             innerMapGroup.append("path")
                 .datum(franceData)
                 .attr("d", geoPath)
@@ -1236,7 +1229,6 @@ window.SankeyModule = {
                 .attr("stroke-width", "2px")
                 .attr("stroke-dasharray", "4,3");
 
-            // PLACEMENT DES PASTILLES ISSUES DU SANKEY
             const lieuxTraites = new Set();
 
             nodes.forEach(n => {
@@ -1253,20 +1245,14 @@ window.SankeyModule = {
                         if (!lieuxTraites.has(cleUniqueLieu)) {
                             lieuxTraites.add(cleUniqueLieu);
 
-                            // La projection de D3 convertit instantanément [lng, lat] terrestres en pixels [X, Y]
-                            // ATTENTION : D3 prend [Longitude, Latitude] dans cet ordre précis !
                             const coordsPixels = projection([parsedLng, parsedLat]);
 
                             if (coordsPixels) {
                                 const [xPx, yPx] = coordsPixels;
 
-                                // Sécurité pour s'assurer que le point projeté est bien dans les limites visibles
                                 if (xPx >= 0 && xPx <= innerMapWidth && yPx >= 0 && yPx <= innerMapHeight) {
-                                    
-                                    // Taille idéale pour l'affichage en Haute Définition
                                     const pointRadius = Math.max(15, exportWidth * 0.002);
 
-                                    // Création de la pastille de couleur avec liseré d'isolation blanc
                                     innerMapGroup.append("circle")
                                         .attr("cx", xPx)
                                         .attr("cy", yPx)
@@ -1274,16 +1260,6 @@ window.SankeyModule = {
                                         .attr("fill", n.color)
                                         .attr("stroke", "#ffffff") 
                                         .attr("stroke-width", "1.5px");
-
-                                    // Contour externe sombre pour détacher la couleur
-                                    //innerMapGroup.append("circle")
-                                    //    .attr("cx", xPx)
-                                    //    .attr("cy", yPx)
-                                    //    .attr("r", pointRadius + 1)
-                                    //    .attr("fill", "none")
-                                    //    .attr("stroke", "#1e293b") 
-                                    //    .attr("stroke-width", "1px")
-                                    //    .attr("opacity", 0.95);
                                 }
                             }
                         }
@@ -1291,16 +1267,13 @@ window.SankeyModule = {
                 }
             });
 
-            // Déclencher la suite de la génération de l'image (Canvas -> PDF) une fois que les GeoJSON sont dessinés
             continuePdfGeneration();
 
         }).catch(err => {
             console.error("Erreur lors du chargement des fichiers GeoJSON : ", err);
-            // Secours : si les fichiers échouent, on génère le PDF sans la légende pour ne pas bloquer l'utilisateur
             continuePdfGeneration();
         });
 
-        // Pour gérer l'asynchronisme des GeoJSON, isolez la fin de votre fonction originale dans cette sous-fonction :
         function continuePdfGeneration() {
             const svgString = virtualSvg.node().outerHTML;
             const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
@@ -1330,46 +1303,8 @@ window.SankeyModule = {
                 pdf.save(`Arbre_Sankey_Topologique_${format}_${App.currentPerson.surname}.pdf`);
 
                 URL.revokeObjectURL(blobUrl);
-                // Si la fonction closeExportModal existe dans votre classe
                 if(typeof this.closeExportModal === "function") this.closeExportModal();
             };
         }
-        
-        return; // Stoppe l'exécution linéaire pour laisser le relais à continuePdfGeneration() après le traitement asynchrone
-
-        // =================================================================
-        // FIN DE LA LÉGENDE CARTOGRAPHIQUE
-        // =================================================================
-
-        const svgString = virtualSvg.node().outerHTML;
-        const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-        const blobUrl = URL.createObjectURL(svgBlob);
-
-        const img = new Image();
-        img.src = blobUrl;
-        img.onload = () => {
-            const canvas = document.createElement("canvas");
-            canvas.width = exportWidth;
-            canvas.height = exportHeight;
-            const ctx = canvas.getContext("2d");
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, exportWidth, exportHeight);
-            ctx.drawImage(img, 0, 0);
-
-            const imgData = canvas.toDataURL("image/png");
-
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF({
-                orientation: "landscape",
-                unit: "px",
-                format: [exportWidth, exportHeight]
-            });
-
-            pdf.addImage(imgData, "PNG", 0, 0, exportWidth, exportHeight);
-            pdf.save(`Arbre_Sankey_Topologique_${format}_${App.currentPerson.surname}.pdf`);
-
-            URL.revokeObjectURL(blobUrl);
-            this.closeExportModal();
-        };
     }
 };
