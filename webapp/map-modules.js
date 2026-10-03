@@ -54,7 +54,9 @@ window.MapModule = {
             this.clusters = L.markerClusterGroup({
                 showCoverageOnHover: false,
                 zoomToBoundsOnClick: true,
-                spiderfyOnMaxZoom: true
+                spiderfyOnMaxZoom: true,
+                maxClusterRadius: 35,       // Reduit le rayon d'absorption (defaut: 80). Plus c'est bas, plus les amas sont fins.
+                disableClusteringAtZoom: 14 // A partir du zoom 14, les points ne se regroupent plus du tout.
             });
         } else {
             console.error("[Map] Plugin MarkerCluster non trouvé.");
